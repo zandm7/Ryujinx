@@ -26,16 +26,43 @@ namespace Ryujinx.Graphics.Gpu.Shader
         public readonly TessMode TessellationMode;
 
         /// <summary>
+        /// Depth mode zero to one or minus one to one.
+        /// </summary>
+        public readonly bool DepthMode;
+
+        /// <summary>
+        /// Indicates if the point size is set on the shader or is fixed.
+        /// </summary>
+        public readonly bool ProgramPointSizeEnable;
+
+        /// <summary>
+        /// Point size if not set from shader.
+        /// </summary>
+        public readonly float PointSize;
+
+        /// <summary>
         /// Creates a new GPU graphics state.
         /// </summary>
         /// <param name="earlyZForce">Early Z force enable</param>
         /// <param name="topology">Primitive topology</param>
         /// <param name="tessellationMode">Tessellation mode</param>
-        public GpuChannelGraphicsState(bool earlyZForce, PrimitiveTopology topology, TessMode tessellationMode)
+        /// <param name="depthMode">Depth mode zero to one or minus one to one</param>
+        /// <param name="programPointSizeEnable">Indicates if the point size is set on the shader or is fixed</param>
+        /// <param name="pointSize">Point size if not set from shader</param>
+        public GpuChannelGraphicsState(
+            bool earlyZForce,
+            PrimitiveTopology topology,
+            TessMode tessellationMode,
+            bool depthMode,
+            bool programPointSizeEnable,
+            float pointSize)
         {
             EarlyZForce = earlyZForce;
             Topology = topology;
             TessellationMode = tessellationMode;
+            DepthMode = depthMode;
+            ProgramPointSizeEnable = programPointSizeEnable;
+            PointSize = pointSize;
         }
     }
 }

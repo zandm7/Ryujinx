@@ -166,7 +166,10 @@ namespace Ryujinx.Graphics.Gpu.Shader.Cache
                         GpuChannelGraphicsState graphicsState = new GpuChannelGraphicsState(
                             accessorHeader.StateFlags.HasFlag(GuestGpuStateFlags.EarlyZForce),
                             topology,
-                            tessMode);
+                            tessMode,
+                            false,
+                            false,
+                            1f);
 
                         TransformFeedbackDescriptor[] tfdNew = null;
 
