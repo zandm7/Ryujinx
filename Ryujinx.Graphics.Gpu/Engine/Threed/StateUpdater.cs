@@ -1211,7 +1211,10 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
                 _state.State.TessMode,
                 GetDepthMode() == DepthMode.MinusOneToOne,
                 _state.State.VertexProgramPointSize,
-                _state.State.PointSize);
+                _state.State.PointSize,
+                _state.State.AlphaTestEnable,
+                _state.State.AlphaTestFunc,
+                _state.State.AlphaTestRef);
         }
 
         private DepthMode GetDepthMode()
