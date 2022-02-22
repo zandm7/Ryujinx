@@ -196,8 +196,9 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         /// Starts draw.
         /// This sets primitive type and instanced draw parameters.
         /// </summary>
+        /// <param name="engine">3D engine where this method is being called</param>
         /// <param name="argument">Method call argument</param>
-        public void DrawBegin(int argument)
+        public void DrawBegin(ThreedClass engine, int argument)
         {
             bool incrementInstance = (argument & (1 << 26)) != 0;
             bool resetInstance = (argument & (1 << 27)) == 0;
@@ -205,12 +206,12 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
             if (_state.State.PrimitiveTypeOverrideEnable)
             {
                 PrimitiveTypeOverride typeOverride = _state.State.PrimitiveTypeOverride;
-                DrawBegin(incrementInstance, resetInstance, typeOverride.Convert());
+                DrawBegin(engine, incrementInstance, resetInstance, typeOverride.Convert());
             }
             else
             {
                 PrimitiveType type = (PrimitiveType)(argument & 0xffff);
-                DrawBegin(incrementInstance, resetInstance, type.Convert());
+                DrawBegin(engine, incrementInstance, resetInstance, type.Convert());
             }
         }
 
@@ -218,10 +219,11 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         /// Starts draw.
         /// This sets primitive type and instanced draw parameters.
         /// </summary>
+        /// <param name="engine">3D engine where this method is being called</param>
         /// <param name="incrementInstance">Indicates if the current instance should be incremented</param>
         /// <param name="resetInstance">Indicates if the current instance should be set to zero</param>
         /// <param name="topology">Primitive topology</param>
-        private void DrawBegin(bool incrementInstance, bool resetInstance, PrimitiveTopology topology)
+        private void DrawBegin(ThreedClass engine, bool incrementInstance, bool resetInstance, PrimitiveTopology topology)
         {
             if (incrementInstance)
             {
@@ -236,6 +238,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
 
             if (_drawState.Topology != topology || !_topologySet)
             {
+                engine.SetPipelineTopology(topology);
                 _context.Renderer.Pipeline.SetPrimitiveTopology(topology);
                 _drawState.Topology = topology;
                 _topologySet = true;
@@ -305,7 +308,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         {
             PrimitiveTypeOverride typeOverride = _state.State.PrimitiveTypeOverride;
 
-            DrawBegin(instanced, !instanced, typeOverride.Convert());
+            DrawBegin(engine, instanced, !instanced, typeOverride.Convert());
 
             int firstIndex = argument & 0xffff;
             int indexCount = (argument >> 16) & 0xfff;
@@ -399,6 +402,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         {
             engine.Write(IndexBufferCountMethodOffset * 4, indexCount);
 
+            engine.SetPipelineTopology(topology);
             _context.Renderer.Pipeline.SetPrimitiveTopology(topology);
             _drawState.Topology = topology;
             _topologySet = true;
