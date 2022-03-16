@@ -6,6 +6,7 @@ using Ryujinx.Common.Configuration.Hid.Keyboard;
 using Ryujinx.Common.Logging;
 using Ryujinx.Configuration.System;
 using Ryujinx.Configuration.Ui;
+using Ryujinx.Ui.Helper;
 using System;
 using System.Collections.Generic;
 
@@ -88,6 +89,11 @@ namespace Ryujinx.Configuration
             /// </summary>
             public ReactiveObject<bool> StartFullscreen { get; private set; }
 
+            /// <summary>
+            /// Hide / Show Console Window
+            /// </summary>
+            public ReactiveObject<bool> ShowConsole { get; private set; }
+
             public UiSection()
             {
                 GuiColumns        = new Columns();
@@ -96,6 +102,8 @@ namespace Ryujinx.Configuration
                 EnableCustomTheme = new ReactiveObject<bool>();
                 CustomThemePath   = new ReactiveObject<string>();
                 StartFullscreen   = new ReactiveObject<bool>();
+                ShowConsole       = new ReactiveObject<bool>();
+                ShowConsole.Event += static (s, e) => { ConsoleHelper.SetConsoleWindowState(e.NewValue); };
             }
         }
 
@@ -130,6 +138,11 @@ namespace Ryujinx.Configuration
             public ReactiveObject<bool> EnableError { get; private set; }
 
             /// <summary>
+            /// Enables printing trace log messages
+            /// </summary>
+            public ReactiveObject<bool> EnableTrace { get; private set; }
+
+            /// <summary>
             /// Enables printing guest log messages
             /// </summary>
             public ReactiveObject<bool> EnableGuest { get; private set; }
@@ -161,6 +174,7 @@ namespace Ryujinx.Configuration
                 EnableInfo          = new ReactiveObject<bool>();
                 EnableWarn          = new ReactiveObject<bool>();
                 EnableError         = new ReactiveObject<bool>();
+                EnableTrace         = new ReactiveObject<bool>();
                 EnableGuest         = new ReactiveObject<bool>();
                 EnableFsAccessLog   = new ReactiveObject<bool>();
                 FilteredClasses     = new ReactiveObject<LogClass[]>();
@@ -455,6 +469,7 @@ namespace Ryujinx.Configuration
                 LoggingEnableInfo         = Logger.EnableInfo,
                 LoggingEnableWarn         = Logger.EnableWarn,
                 LoggingEnableError        = Logger.EnableError,
+                LoggingEnableTrace        = Logger.EnableTrace,
                 LoggingEnableGuest        = Logger.EnableGuest,
                 LoggingEnableFsAccessLog  = Logger.EnableFsAccessLog,
                 LoggingFilteredClasses    = Logger.FilteredClasses,
@@ -501,6 +516,7 @@ namespace Ryujinx.Configuration
                 EnableCustomTheme         = Ui.EnableCustomTheme,
                 CustomThemePath           = Ui.CustomThemePath,
                 StartFullscreen           = Ui.StartFullscreen,
+                ShowConsole               = Ui.ShowConsole,
                 EnableKeyboard            = Hid.EnableKeyboard,
                 EnableMouse               = Hid.EnableMouse,
                 Hotkeys                   = Hid.Hotkeys,
@@ -526,6 +542,7 @@ namespace Ryujinx.Configuration
             Logger.EnableInfo.Value                = true;
             Logger.EnableWarn.Value                = true;
             Logger.EnableError.Value               = true;
+            Logger.EnableTrace.Value               = false;
             Logger.EnableGuest.Value               = true;
             Logger.EnableFsAccessLog.Value         = false;
             Logger.FilteredClasses.Value           = Array.Empty<LogClass>();
@@ -566,6 +583,7 @@ namespace Ryujinx.Configuration
             Ui.EnableCustomTheme.Value             = false;
             Ui.CustomThemePath.Value               = "";
             Ui.StartFullscreen.Value               = false;
+            Ui.ShowConsole.Value                   = true;
             Hid.EnableKeyboard.Value               = false;
             Hid.EnableMouse.Value                  = false;
             Hid.Hotkeys.Value = new KeyboardHotkeys
@@ -987,10 +1005,28 @@ namespace Ryujinx.Configuration
                         controllerConfig.RangeRight = 1.0f;
                     }
                 }
-                
+
                 configurationFileUpdated = true;
             }
-            
+
+            if (configurationFileFormat.Version < 36)
+            {
+                Common.Logging.Logger.Warning?.Print(LogClass.Application, $"Outdated configuration version {configurationFileFormat.Version}, migrating to version 36.");
+
+                configurationFileFormat.LoggingEnableTrace = false;
+
+                configurationFileUpdated = true;
+            }
+
+            if (configurationFileFormat.Version < 37)
+            {
+                Common.Logging.Logger.Warning?.Print(LogClass.Application, $"Outdated configuration version {configurationFileFormat.Version}, migrating to version 37.");
+
+                configurationFileFormat.ShowConsole = true;
+
+                configurationFileUpdated = true;
+            }
+
             Logger.EnableFileLog.Value             = configurationFileFormat.EnableFileLog;
             Graphics.BackendThreading.Value        = configurationFileFormat.BackendThreading;
             Graphics.ResScale.Value                = configurationFileFormat.ResScale;
@@ -1003,6 +1039,7 @@ namespace Ryujinx.Configuration
             Logger.EnableInfo.Value                = configurationFileFormat.LoggingEnableInfo;
             Logger.EnableWarn.Value                = configurationFileFormat.LoggingEnableWarn;
             Logger.EnableError.Value               = configurationFileFormat.LoggingEnableError;
+            Logger.EnableTrace.Value               = configurationFileFormat.LoggingEnableTrace;
             Logger.EnableGuest.Value               = configurationFileFormat.LoggingEnableGuest;
             Logger.EnableFsAccessLog.Value         = configurationFileFormat.LoggingEnableFsAccessLog;
             Logger.FilteredClasses.Value           = configurationFileFormat.LoggingFilteredClasses;
@@ -1043,6 +1080,7 @@ namespace Ryujinx.Configuration
             Ui.EnableCustomTheme.Value             = configurationFileFormat.EnableCustomTheme;
             Ui.CustomThemePath.Value               = configurationFileFormat.CustomThemePath;
             Ui.StartFullscreen.Value               = configurationFileFormat.StartFullscreen;
+            Ui.ShowConsole.Value                   = configurationFileFormat.ShowConsole;
             Hid.EnableKeyboard.Value               = configurationFileFormat.EnableKeyboard;
             Hid.EnableMouse.Value                  = configurationFileFormat.EnableMouse;
             Hid.Hotkeys.Value                      = configurationFileFormat.Hotkeys;

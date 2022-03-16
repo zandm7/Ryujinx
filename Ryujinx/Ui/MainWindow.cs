@@ -107,6 +107,7 @@ namespace Ryujinx.Ui
         [GUI] MenuItem        _hideUi;
         [GUI] MenuItem        _fullScreen;
         [GUI] CheckMenuItem   _startFullScreen;
+        [GUI] CheckMenuItem   _showConsole;
         [GUI] CheckMenuItem   _favToggle;
         [GUI] MenuItem        _firmwareInstallDirectory;
         [GUI] MenuItem        _firmwareInstallFile;
@@ -178,7 +179,7 @@ namespace Ryujinx.Ui
             VirtualFileSystem.FixExtraData(_libHacHorizonManager.RyujinxClient);
 
             _contentManager         = new ContentManager(_virtualFileSystem);
-            _accountManager         = new AccountManager(_libHacHorizonManager.RyujinxClient);
+            _accountManager         = new AccountManager(_libHacHorizonManager.RyujinxClient, Program.CommandLineProfile);
             _userChannelPersistence = new UserChannelPersistence();
 
             // Instantiate GUI objects.
@@ -212,6 +213,9 @@ namespace Ryujinx.Ui
             {
                 _startFullScreen.Active = true;
             }
+
+            _showConsole.Active = ConfigurationState.Instance.Ui.ShowConsole.Value;
+            _showConsole.Visible = ConsoleHelper.SetConsoleWindowStateSupported;
 
             _actionMenu.Sensitive = false;
             _pauseEmulation.Sensitive = false;
@@ -638,18 +642,18 @@ namespace Ryujinx.Ui
         [Conditional("RELEASE")]
         public void PerformanceCheck()
         {
-            if (ConfigurationState.Instance.Logger.EnableDebug.Value)
+            if (ConfigurationState.Instance.Logger.EnableTrace.Value)
             {
                 MessageDialog debugWarningDialog = new MessageDialog(this, DialogFlags.Modal, MessageType.Warning, ButtonsType.YesNo, null)
                 {
                     Title         = "Ryujinx - Warning",
-                    Text          = "You have debug logging enabled, which is designed to be used by developers only.",
-                    SecondaryText = "For optimal performance, it's recommended to disable debug logging. Would you like to disable debug logging now?"
+                    Text          = "You have trace logging enabled, which is designed to be used by developers only.",
+                    SecondaryText = "For optimal performance, it's recommended to disable trace logging. Would you like to disable trace logging now?"
                 };
 
                 if (debugWarningDialog.Run() == (int)ResponseType.Yes)
                 {
-                    ConfigurationState.Instance.Logger.EnableDebug.Value = false;
+                    ConfigurationState.Instance.Logger.EnableTrace.Value = false;
                     SaveConfig();
                 }
 
@@ -1209,7 +1213,7 @@ namespace Ryujinx.Ui
         {
             AspectRatio aspectRatio = ConfigurationState.Instance.Graphics.AspectRatio.Value;
 
-            ConfigurationState.Instance.Graphics.AspectRatio.Value = ((int)aspectRatio + 1) > Enum.GetNames(typeof(AspectRatio)).Length - 1 ? AspectRatio.Fixed4x3 : aspectRatio + 1;
+            ConfigurationState.Instance.Graphics.AspectRatio.Value = ((int)aspectRatio + 1) > Enum.GetNames<AspectRatio>().Length - 1 ? AspectRatio.Fixed4x3 : aspectRatio + 1;
         }
 
         private void Row_Clicked(object sender, ButtonReleaseEventArgs args)
@@ -1291,7 +1295,7 @@ namespace Ryujinx.Ui
 
         private void OpenLogsFolder_Pressed(object sender, EventArgs args)
         {
-            string logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            string logPath = System.IO.Path.Combine(ReleaseInformations.GetBaseApplicationDirectory(), "Logs");
 
             new DirectoryInfo(logPath).Create();
 
@@ -1531,6 +1535,13 @@ namespace Ryujinx.Ui
         private void StartFullScreen_Toggled(object sender, EventArgs args)
         {
             ConfigurationState.Instance.Ui.StartFullscreen.Value = _startFullScreen.Active;
+
+            SaveConfig();
+        }
+
+        private void ShowConsole_Toggled(object sender, EventArgs args)
+        {
+            ConfigurationState.Instance.Ui.ShowConsole.Value = _showConsole.Active;
 
             SaveConfig();
         }

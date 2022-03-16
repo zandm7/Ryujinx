@@ -18,7 +18,7 @@ namespace ARMeilleure.Decoders
         // For lower code quality translation, we set a lower limit since we're blocking execution.
         private const int MaxInstsPerFunctionLowCq = 500;
 
-        public static Block[] Decode(IMemoryManager memory, ulong address, ExecutionMode mode, bool highCq, bool singleBlock)
+        public static Block[] Decode(IMemoryManager memory, ulong address, ExecutionMode mode, bool highCq, DecoderMode dMode)
         {
             List<Block> blocks = new List<Block>();
 
@@ -38,7 +38,7 @@ namespace ARMeilleure.Decoders
                 {
                     block = new Block(blkAddress);
 
-                    if ((singleBlock && visited.Count >= 1) || opsCount > instructionLimit || !memory.IsMapped(blkAddress))
+                    if ((dMode != DecoderMode.MultipleBlocks && visited.Count >= 1) || opsCount > instructionLimit || !memory.IsMapped(blkAddress))
                     {
                         block.Exit = true;
                         block.EndAddress = blkAddress;
@@ -96,6 +96,12 @@ namespace ARMeilleure.Decoders
                         }
                     }
 
+                    if (dMode == DecoderMode.SingleInstruction)
+                    {
+                        // Only read at most one instruction
+                        limitAddress = currBlock.Address + 1;
+                    }
+
                     FillBlock(memory, mode, currBlock, limitAddress);
 
                     opsCount += currBlock.OpCodes.Count;
@@ -115,7 +121,7 @@ namespace ARMeilleure.Decoders
                             currBlock.Branch = GetBlock((ulong)op.Immediate);
                         }
 
-                        if (!IsUnconditionalBranch(lastOp) || isCall)
+                        if (isCall || !(IsUnconditionalBranch(lastOp) || IsTrap(lastOp)))
                         {
                             currBlock.Next = GetBlock(currBlock.EndAddress);
                         }
@@ -143,7 +149,7 @@ namespace ARMeilleure.Decoders
                 throw new InvalidOperationException($"Decoded a single empty exit block. Entry point = 0x{address:X}.");
             }
 
-            if (!singleBlock)
+            if (dMode == DecoderMode.MultipleBlocks)
             {
                 return TailCallRemover.RunPass(address, blocks);
             }
@@ -195,12 +201,13 @@ namespace ARMeilleure.Decoders
             ulong          limitAddress)
         {
             ulong address = block.Address;
+            int itBlockSize = 0;
 
             OpCode opCode;
 
             do
             {
-                if (address >= limitAddress)
+                if (address >= limitAddress && itBlockSize == 0)
                 {
                     break;
                 }
@@ -210,6 +217,15 @@ namespace ARMeilleure.Decoders
                 block.OpCodes.Add(opCode);
 
                 address += (ulong)opCode.OpCodeSizeInBytes;
+
+                if (opCode is OpCodeT16IfThen it)
+                {
+                    itBlockSize = it.IfThenBlockSize;
+                }
+                else if (itBlockSize > 0)
+                {
+                    itBlockSize--;
+                }
             }
             while (!(IsBranch(opCode) || IsException(opCode)));
 
@@ -247,6 +263,11 @@ namespace ARMeilleure.Decoders
             // so we must consider such operations as a branch in potential aswell.
             if (opCode is IOpCode32Alu opAlu && opAlu.Rd == RegisterAlias.Aarch32Pc)
             {
+                if (opCode is OpCodeT32)
+                {
+                    return opCode.Instruction.Name != InstName.Tst && opCode.Instruction.Name != InstName.Teq &&
+                           opCode.Instruction.Name != InstName.Cmp && opCode.Instruction.Name != InstName.Cmn;
+                }
                 return true;
             }
 
@@ -309,8 +330,12 @@ namespace ARMeilleure.Decoders
 
         private static bool IsException(OpCode opCode)
         {
+            return IsTrap(opCode) || opCode.Instruction.Name == InstName.Svc;
+        }
+
+        private static bool IsTrap(OpCode opCode)
+        {
             return opCode.Instruction.Name == InstName.Brk ||
-                   opCode.Instruction.Name == InstName.Svc ||
                    opCode.Instruction.Name == InstName.Trap ||
                    opCode.Instruction.Name == InstName.Und;
         }
@@ -345,7 +370,14 @@ namespace ARMeilleure.Decoders
             }
             else
             {
-                return new OpCode(inst, address, opCode);
+                if (mode == ExecutionMode.Aarch32Thumb)
+                {
+                    return new OpCodeT16(inst, address, opCode);
+                }
+                else
+                {
+                    return new OpCode(inst, address, opCode);
+                }
             }
         }
     }

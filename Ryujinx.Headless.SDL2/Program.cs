@@ -220,6 +220,7 @@ namespace Ryujinx.Headless.SDL2
                             StickButton  = ConfigGamepadInputId.LeftStick,
                             InvertStickX = false,
                             InvertStickY = false,
+                            Rotate90CW   = false,
                         },
 
                         RightJoycon = new RightJoyconCommonConfig<ConfigGamepadInputId>
@@ -241,6 +242,7 @@ namespace Ryujinx.Headless.SDL2
                             StickButton  = ConfigGamepadInputId.RightStick,
                             InvertStickX = false,
                             InvertStickY = false,
+                            Rotate90CW   = false,
                         },
 
                         Motion = new StandardMotionConfigController
@@ -310,7 +312,7 @@ namespace Ryujinx.Headless.SDL2
                 {
                     controllerConfig.RangeLeft  = 1.0f;
                     controllerConfig.RangeRight = 1.0f;
-                    
+
                     Logger.Info?.Print(LogClass.Application, $"{config.PlayerIndex} stick range reset. Save the profile now to update your configuration");
                 }
             }
@@ -389,13 +391,14 @@ namespace Ryujinx.Headless.SDL2
             Logger.SetEnable(LogLevel.Info, (bool)option.LoggingEnableInfo);
             Logger.SetEnable(LogLevel.Warning, (bool)option.LoggingEnableWarning);
             Logger.SetEnable(LogLevel.Error, (bool)option.LoggingEnableError);
+            Logger.SetEnable(LogLevel.Trace, (bool)option.LoggingEnableTrace);
             Logger.SetEnable(LogLevel.Guest, (bool)option.LoggingEnableGuest);
             Logger.SetEnable(LogLevel.AccessLog, (bool)option.LoggingEnableFsAccessLog);
 
             if ((bool)option.EnableFileLog)
             {
                 Logger.AddTarget(new AsyncLogTargetWrapper(
-                    new FileLogTarget(AppDomain.CurrentDomain.BaseDirectory, "file"),
+                    new FileLogTarget(ReleaseInformations.GetBaseApplicationDirectory(), "file"),
                     1000,
                     AsyncLogTargetOverflowAction.Block
                 ));

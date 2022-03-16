@@ -209,6 +209,17 @@ namespace ARMeilleure.Translation
             return nextAddr;
         }
 
+        public ulong Step(State.ExecutionContext context, ulong address)
+        {
+            TranslatedFunction func = Translate(address, context.ExecutionMode, highCq: false, singleStep: true);
+
+            address = func.Execute(context);
+
+            EnqueueForDeletion(address, func);
+
+            return address;
+        }
+
         internal TranslatedFunction GetOrTranslate(ulong address, ExecutionMode mode)
         {
             if (!Functions.TryGetValue(address, out TranslatedFunction func))
@@ -242,7 +253,7 @@ namespace ARMeilleure.Translation
             }
         }
 
-        internal TranslatedFunction Translate(ulong address, ExecutionMode mode, bool highCq)
+        internal TranslatedFunction Translate(ulong address, ExecutionMode mode, bool highCq, bool singleStep = false)
         {
             var context = new ArmEmitterContext(
                 Memory,
@@ -255,7 +266,7 @@ namespace ARMeilleure.Translation
 
             Logger.StartPass(PassName.Decoding);
 
-            Block[] blocks = Decoder.Decode(Memory, address, mode, highCq, singleBlock: false);
+            Block[] blocks = Decoder.Decode(Memory, address, mode, highCq, singleStep ? DecoderMode.SingleInstruction : DecoderMode.MultipleBlocks);
 
             Logger.EndPass(PassName.Decoding);
 
@@ -285,14 +296,14 @@ namespace ARMeilleure.Translation
 
             var options = highCq ? CompilerOptions.HighCq : CompilerOptions.None;
 
-            if (context.HasPtc)
+            if (context.HasPtc && !singleStep)
             {
                 options |= CompilerOptions.Relocatable;
             }
 
             CompiledFunction compiledFunc = Compiler.Compile(cfg, argTypes, retType, options);
 
-            if (context.HasPtc)
+            if (context.HasPtc && !singleStep)
             {
                 Hash128 hash = Ptc.ComputeHash(Memory, address, funcSize);
 
@@ -380,6 +391,13 @@ namespace ARMeilleure.Translation
 
                         Operand lblPredicateSkip = default;
 
+                        if (context.IsInIfThenBlock && context.CurrentIfThenBlockCond != Condition.Al)
+                        {
+                            lblPredicateSkip = Label();
+
+                            InstEmitFlowHelper.EmitCondBranch(context, lblPredicateSkip, context.CurrentIfThenBlockCond.Invert());
+                        }
+
                         if (opCode is OpCode32 op && op.Cond < Condition.Al)
                         {
                             lblPredicateSkip = Label();
@@ -399,6 +417,11 @@ namespace ARMeilleure.Translation
                         if (lblPredicateSkip != default)
                         {
                             context.MarkLabel(lblPredicateSkip);
+                        }
+
+                        if (context.IsInIfThenBlock && opCode.Instruction.Name != InstName.It)
+                        {
+                            context.AdvanceIfThenBlockState();
                         }
                     }
                 }

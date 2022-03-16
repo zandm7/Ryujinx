@@ -319,6 +319,7 @@ namespace ARMeilleure.Translation
                             {
                                 node.Max = end;
                                 PropagateIncrease(node);
+                                RestoreBalanceAfterInsertion(node);
                             }
                         }
                         else if (endCmp < 0)
@@ -347,6 +348,7 @@ namespace ARMeilleure.Translation
 
             PropagateIncrease(newNode);
             _count++;
+            RestoreBalanceAfterInsertion(newNode);
             outNode = newNode;
             return true;
         }

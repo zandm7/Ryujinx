@@ -25,9 +25,9 @@ namespace Ryujinx.Graphics.Shader.Translation
 
         public ImapPixelType[] ImapTypes { get; }
 
-        public OmapTarget[] OmapTargets    { get; }
-        public bool         OmapSampleMask { get; }
-        public bool         OmapDepth      { get; }
+        public int OmapTargets { get; }
+        public bool OmapSampleMask { get; }
+        public bool OmapDepth { get; }
 
         public IGpuAccessor GpuAccessor { get; }
 
@@ -53,6 +53,11 @@ namespace Ryujinx.Graphics.Shader.Translation
         public int PassthroughAttributes { get; private set; }
         private int _nextUsedInputAttributes;
         private int _thisUsedInputAttributes;
+
+        public UInt128 NextInputAttributesComponents { get; private set; }
+        public UInt128 ThisInputAttributesComponents { get; private set; }
+        public UInt128 NextInputAttributesPerPatchComponents { get; private set; }
+        public UInt128 ThisInputAttributesPerPatchComponents { get; private set; }
 
         private int _usedConstantBuffers;
         private int _usedStorageBuffers;
@@ -135,21 +140,8 @@ namespace Ryujinx.Graphics.Shader.Translation
 
         public int GetDepthRegister()
         {
-            int count = 0;
-
-            for (int index = 0; index < OmapTargets.Length; index++)
-            {
-                for (int component = 0; component < 4; component++)
-                {
-                    if (OmapTargets[index].ComponentEnabled(component))
-                    {
-                        count++;
-                    }
-                }
-            }
-
             // The depth register is always two registers after the last color output.
-            return count + 1;
+            return BitOperations.PopCount((uint)OmapTargets) + 1;
         }
 
         public TextureFormat GetTextureFormat(int handle, int cbufSlot = -1)
@@ -240,11 +232,12 @@ namespace Ryujinx.Graphics.Shader.Translation
             UsedOutputAttributes |= 1 << index;
         }
 
-        public void SetInputUserAttribute(int index, bool perPatch)
+        public void SetInputUserAttribute(int index, int component, bool perPatch)
         {
             if (perPatch)
             {
                 UsedInputAttributesPerPatch |= 1 << index;
+                ThisInputAttributesPerPatchComponents |= UInt128.Pow2(index * 4 + component);
             }
             else
             {
@@ -252,6 +245,7 @@ namespace Ryujinx.Graphics.Shader.Translation
 
                 UsedInputAttributes |= mask;
                 _thisUsedInputAttributes |= mask;
+                ThisInputAttributesComponents |= UInt128.Pow2(index * 4 + component);
             }
         }
 
@@ -269,6 +263,8 @@ namespace Ryujinx.Graphics.Shader.Translation
 
         public void MergeFromtNextStage(ShaderConfig config)
         {
+            NextInputAttributesComponents = config.ThisInputAttributesComponents;
+            NextInputAttributesPerPatchComponents = config.ThisInputAttributesPerPatchComponents;
             NextUsesFixedFuncAttributes = config.UsedFeatures.HasFlag(FeatureFlags.FixedFuncAttr);
             MergeOutputUserAttributes(config.UsedInputAttributes, config.UsedInputAttributesPerPatch);
         }
@@ -332,6 +328,7 @@ namespace Ryujinx.Graphics.Shader.Translation
         public void SetAllInputUserAttributes()
         {
             UsedInputAttributes |= Constants.AllAttributesMask;
+            ThisInputAttributesComponents |= ~UInt128.Zero >> (128 - Constants.MaxAttributes * 4);
         }
 
         public void SetAllOutputUserAttributes()
@@ -382,7 +379,7 @@ namespace Ryujinx.Graphics.Shader.Translation
             inst &= Instruction.Mask;
             bool isImage = inst == Instruction.ImageLoad || inst == Instruction.ImageStore || inst == Instruction.ImageAtomic;
             bool isWrite = inst == Instruction.ImageStore || inst == Instruction.ImageAtomic;
-            bool accurateType = inst != Instruction.Lod;
+            bool accurateType = inst != Instruction.Lod && inst != Instruction.TextureSize;
             bool coherent = flags.HasFlag(TextureFlags.Coherent);
 
             if (isImage)

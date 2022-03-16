@@ -34,7 +34,7 @@ namespace ARMeilleure.Instructions
 
             uint pc = op.GetPc();
 
-            bool isThumb = IsThumb(context.CurrOp);
+            bool isThumb = ((OpCode32)context.CurrOp).IsThumb();
 
             uint currentPc = isThumb
                 ? pc | 1
@@ -61,17 +61,17 @@ namespace ARMeilleure.Instructions
             Operand addr = context.Copy(GetIntA32(context, op.Rm));
             Operand bitOne = context.BitwiseAnd(addr, Const(1));
 
-            bool isThumb = IsThumb(context.CurrOp);
+            bool isThumb = ((OpCode32)context.CurrOp).IsThumb();
 
             uint currentPc = isThumb
-                ? pc | 1
+                ? (pc - 2) | 1
                 : pc - 4;
 
             SetIntA32(context, GetBankedRegisterAlias(context.Mode, RegisterAlias.Aarch32Lr), Const(currentPc));
 
             SetFlag(context, PState.TFlag, bitOne);
 
-            EmitVirtualCall(context, addr);
+            EmitBxWritePc(context, addr);
         }
 
         public static void Bx(ArmEmitterContext context)
@@ -79,6 +79,33 @@ namespace ARMeilleure.Instructions
             IOpCode32BReg op = (IOpCode32BReg)context.CurrOp;
 
             EmitBxWritePc(context, GetIntA32(context, op.Rm), op.Rm);
+        }
+
+        public static void Cbnz(ArmEmitterContext context) => EmitCb(context, onNotZero: true);
+        public static void Cbz(ArmEmitterContext context)  => EmitCb(context, onNotZero: false);
+
+        private static void EmitCb(ArmEmitterContext context, bool onNotZero)
+        {
+            OpCodeT16BImmCmp op = (OpCodeT16BImmCmp)context.CurrOp;
+
+            Operand value = GetIntOrZR(context, op.Rn);
+            Operand lblTarget = context.GetLabel((ulong)op.Immediate);
+
+            if (onNotZero)
+            {
+                context.BranchIfTrue(lblTarget, value);
+            }
+            else
+            {
+                context.BranchIfFalse(lblTarget, value);
+            }
+        }
+
+        public static void It(ArmEmitterContext context)
+        {
+            OpCodeT16IfThen op = (OpCodeT16IfThen)context.CurrOp;
+
+            context.SetIfThenBlockState(op.IfThenBlockConds);
         }
     }
 }
