@@ -21,6 +21,10 @@
   </li>
   <li>
     <b>Leave VSync on</b> while playing HDR or else your game will be sped up
+  </li>
+  <li>
+    Graphics Backend Multithreading can cause issues, especially with Nvidia GPUs. Consider disabling in Ryujinx and enabling driver-level multithreading instead
+  </li>
   <li>
     Vulkan rendering is available in this build, but OpenGL is the default for safety/compatibility reasons
   </li>
