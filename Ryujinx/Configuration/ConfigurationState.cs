@@ -369,6 +369,11 @@ namespace Ryujinx.Configuration
             /// </summary>
             public ReactiveObject<bool> EnableShaderCache { get; private set; }
 
+            /// <summary>
+            /// Graphics backend
+            /// </summary>
+            public ReactiveObject<GraphicsBackend> GraphicsBackend { get; private set; }
+
             public GraphicsSection()
             {
                 BackendThreading        = new ReactiveObject<BackendThreading>();
@@ -386,6 +391,8 @@ namespace Ryujinx.Configuration
                 EnableVsync.Event       += static (sender, e) => LogValueChange(sender, e, nameof(EnableVsync));
                 EnableShaderCache       = new ReactiveObject<bool>();
                 EnableShaderCache.Event += static (sender, e) => LogValueChange(sender, e, nameof(EnableShaderCache));
+                GraphicsBackend         = new ReactiveObject<GraphicsBackend>();
+                GraphicsBackend.Event   += static (sender, e) => LogValueChange(sender, e, nameof(GraphicsBackend));
             }
         }
 
@@ -523,6 +530,7 @@ namespace Ryujinx.Configuration
                 KeyboardConfig            = new List<object>(),
                 ControllerConfig          = new List<object>(),
                 InputConfig               = Hid.InputConfig,
+                GraphicsBackend           = Graphics.GraphicsBackend,
             };
 
             return configurationFile;
@@ -536,6 +544,7 @@ namespace Ryujinx.Configuration
             Graphics.ResScaleCustom.Value          = 1.0f;
             Graphics.MaxAnisotropy.Value           = -1.0f;
             Graphics.AspectRatio.Value             = AspectRatio.Fixed16x9;
+            Graphics.GraphicsBackend.Value         = GraphicsBackend.OpenGl;
             Graphics.ShadersDumpPath.Value         = "";
             Logger.EnableDebug.Value               = false;
             Logger.EnableStub.Value                = true;
@@ -1034,6 +1043,7 @@ namespace Ryujinx.Configuration
             Graphics.MaxAnisotropy.Value           = configurationFileFormat.MaxAnisotropy;
             Graphics.AspectRatio.Value             = configurationFileFormat.AspectRatio;
             Graphics.ShadersDumpPath.Value         = configurationFileFormat.GraphicsShadersDumpPath;
+            Graphics.GraphicsBackend.Value         = configurationFileFormat.GraphicsBackend;
             Logger.EnableDebug.Value               = configurationFileFormat.LoggingEnableDebug;
             Logger.EnableStub.Value                = configurationFileFormat.LoggingEnableStub;
             Logger.EnableInfo.Value                = configurationFileFormat.LoggingEnableInfo;
