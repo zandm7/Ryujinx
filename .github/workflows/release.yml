@@ -22,7 +22,7 @@ jobs:
       RYUJINX_BASE_VERSION: "6.9"
       RYUJINX_TARGET_RELEASE_CHANNEL_NAME: "master"
       RYUJINX_TARGET_RELEASE_CHANNEL_OWNER: "zandm7"
-      RYUJINX_TARGET_RELEASE_CHANNEL_REPO: "Ryujinx"
+      RYUJINX_TARGET_RELEASE_CHANNEL_REPO: "Ryujinx-HDR"
 
     steps:
       - uses: actions/checkout@v2
