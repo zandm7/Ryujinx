@@ -1363,7 +1363,7 @@ namespace Ryujinx.HLE.HOS.Kernel.SupervisorCall
 
             KCodeMemory codeMemory = currentProcess.HandleTable.GetObject<KCodeMemory>(handle);
 
-            if (codeMemory == null || codeMemory.Owner == currentProcess)
+            if (codeMemory == null /* || codeMemory.Owner == currentProcess */)
             {
                 return KernelResult.InvalidHandle;
             }
