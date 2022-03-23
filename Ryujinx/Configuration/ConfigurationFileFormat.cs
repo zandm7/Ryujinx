@@ -29,7 +29,7 @@ namespace Ryujinx.Configuration
         /// <summary>
         /// Whether or not backend threading is enabled. The "Auto" setting will determine whether threading should be enabled at runtime.
         /// </summary>
-        public BackendThreading BackendThreading { get; set; }
+        public BackendThreading BackendThreading { get; set; } = BackendThreading.Off;
 
         /// <summary>
         /// Resolution Scale. An integer scale applied to applicable render targets. Values 1-4, or -1 to use a custom floating point scale instead.
@@ -159,12 +159,17 @@ namespace Ryujinx.Configuration
         /// <summary>
         /// Enables or disables Shader cache
         /// </summary>
-        public bool EnableShaderCache { get; set; }
+        public bool EnableShaderCache { get; set; } = true;
+
+        /// <summary>
+        /// Enables or disables SPIR-V shader compilation
+        /// </summary>
+        public bool EnableSpirvCompilation { get; set; } = true;
 
         /// <summary>
         /// Enables or disables profiled translation cache persistency
         /// </summary>
-        public bool EnablePtc { get; set; }
+        public bool EnablePtc { get; set; } = false;
 
         /// <summary>
         /// Enables or disables guest Internet access

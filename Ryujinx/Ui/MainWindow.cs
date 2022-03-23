@@ -1035,6 +1035,9 @@ namespace Ryujinx.Ui
             Graphics.Gpu.GraphicsConfig.MaxAnisotropy     = ConfigurationState.Instance.Graphics.MaxAnisotropy;
             Graphics.Gpu.GraphicsConfig.ShadersDumpPath   = ConfigurationState.Instance.Graphics.ShadersDumpPath;
             Graphics.Gpu.GraphicsConfig.EnableShaderCache = ConfigurationState.Instance.Graphics.EnableShaderCache && ConfigurationState.Instance.Graphics.GraphicsBackend != GraphicsBackend.Vulkan;
+            Graphics.Gpu.GraphicsConfig.EnableSpirvCompilation =
+                ConfigurationState.Instance.Graphics.EnableSpirvCompilation &&
+                ConfigurationState.Instance.Graphics.GraphicsBackend != GraphicsBackend.OpenGl;
         }
 
         public void SaveConfig()
