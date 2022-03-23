@@ -2,7 +2,7 @@
 {
     public enum GraphicsBackend
     {
-        Vulkan,
-        OpenGl
+        OpenGl,
+        Vulkan
     }
 }

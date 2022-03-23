@@ -1927,8 +1927,8 @@
                                         <property name="tooltip-text" translatable="yes">Graphics Backend to use</property>
                                         <property name="active-id">-1</property>
                                         <items>
-                                          <item id="0" translatable="yes">Vulkan</item>
-                                          <item id="1" translatable="yes">OpenGL</item>
+                                          <item id="0" translatable="yes">OpenGL</item>
+                                          <item id="1" translatable="yes">Vulkan</item>
                                         </items>
                                       </object>
                                       <packing>
