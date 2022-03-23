@@ -339,7 +339,11 @@ namespace Ryujinx.Ui.Windows
             //
             // _aboutDescriptionLabel
             //
-            _aboutDescriptionLabel = new Label("Ryujinx is an emulator for the Nintendo Switch™.\n" +
+            _aboutDescriptionLabel = new Label("THIS IS NOT AN OFFICIAL BUILD OF RYUJINX.\n" +
+                                               "This is a third-party fork with experimental features.\n" +
+                                               "Please do not go to Ryujinx official channels for support.\n" +
+                                               "Original text below:\n\n" +
+                                               "Ryujinx is an emulator for the Nintendo Switch™.\n" +
                                                "Please support us on Patreon.\n" +
                                                "Get all the latest news on our Twitter or Discord.\n" +
                                                "Developers interested in contributing can find out more on our GitHub or Discord.")
