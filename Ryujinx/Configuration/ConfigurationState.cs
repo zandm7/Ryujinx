@@ -368,6 +368,11 @@ namespace Ryujinx.Configuration
             /// Enables or disables Shader cache
             /// </summary>
             public ReactiveObject<bool> EnableShaderCache { get; private set; }
+            
+            /// <summary>
+            /// Enables or disables SPIR-V shader compilation
+            /// </summary>
+            public ReactiveObject<bool> EnableSpirvCompilation { get; private set; }
 
             /// <summary>
             /// Graphics backend
@@ -391,6 +396,9 @@ namespace Ryujinx.Configuration
                 EnableVsync.Event       += static (sender, e) => LogValueChange(sender, e, nameof(EnableVsync));
                 EnableShaderCache       = new ReactiveObject<bool>();
                 EnableShaderCache.Event += static (sender, e) => LogValueChange(sender, e, nameof(EnableShaderCache));
+                EnableSpirvCompilation = new ReactiveObject<bool>();
+                EnableSpirvCompilation.Event +=
+                    static (sender, e) => LogValueChange(sender, e, nameof(EnableSpirvCompilation));
                 GraphicsBackend         = new ReactiveObject<GraphicsBackend>();
                 GraphicsBackend.Event   += static (sender, e) => LogValueChange(sender, e, nameof(GraphicsBackend));
             }
@@ -492,6 +500,7 @@ namespace Ryujinx.Configuration
                 HideCursorOnIdle          = HideCursorOnIdle,
                 EnableVsync               = Graphics.EnableVsync,
                 EnableShaderCache         = Graphics.EnableShaderCache,
+                EnableSpirvCompilation    = Graphics.EnableSpirvCompilation,
                 EnablePtc                 = System.EnablePtc,
                 EnableInternetAccess      = System.EnableInternetAccess,
                 EnableFsIntegrityChecks   = System.EnableFsIntegrityChecks,
@@ -539,7 +548,7 @@ namespace Ryujinx.Configuration
         public void LoadDefault()
         {
             Logger.EnableFileLog.Value             = true;
-            Graphics.BackendThreading.Value        = BackendThreading.Auto;
+            Graphics.BackendThreading.Value        = BackendThreading.Off;
             Graphics.ResScale.Value                = 1;
             Graphics.ResScaleCustom.Value          = 1.0f;
             Graphics.MaxAnisotropy.Value           = -1.0f;
@@ -567,7 +576,8 @@ namespace Ryujinx.Configuration
             HideCursorOnIdle.Value                 = false;
             Graphics.EnableVsync.Value             = true;
             Graphics.EnableShaderCache.Value       = true;
-            System.EnablePtc.Value                 = true;
+            Graphics.EnableSpirvCompilation.Value  = true;
+            System.EnablePtc.Value                 = false;
             System.EnableInternetAccess.Value      = false;
             System.EnableFsIntegrityChecks.Value   = true;
             System.FsGlobalAccessLogMode.Value     = 0;
@@ -1065,6 +1075,7 @@ namespace Ryujinx.Configuration
             HideCursorOnIdle.Value                 = configurationFileFormat.HideCursorOnIdle;
             Graphics.EnableVsync.Value             = configurationFileFormat.EnableVsync;
             Graphics.EnableShaderCache.Value       = configurationFileFormat.EnableShaderCache;
+            Graphics.EnableSpirvCompilation.Value  = configurationFileFormat.EnableSpirvCompilation;
             System.EnablePtc.Value                 = configurationFileFormat.EnablePtc;
             System.EnableInternetAccess.Value      = configurationFileFormat.EnableInternetAccess;
             System.EnableFsIntegrityChecks.Value   = configurationFileFormat.EnableFsIntegrityChecks;
