@@ -95,7 +95,7 @@ namespace Ryujinx.Ui.Windows
 
         private List<AmiiboApi> _amiiboList;
 
-        public AmiiboWindow() : base($"Ryujinx {Program.Version} - Amiibo")
+        public AmiiboWindow() : base($"Ryujinx-HDR-unofficial {Program.Version} - Amiibo")
         {
             Icon = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.Resources.Logo_Ryujinx.png");
 

@@ -58,7 +58,7 @@ namespace Ryujinx.Headless.SDL2
         {
             Version = ReleaseInformations.GetVersion();
 
-            Console.Title = $"Ryujinx Console {Version} (Headless SDL2)";
+            Console.Title = $"Ryujinx-HDR-unofficial Console {Version} (Headless SDL2)";
 
             AppDataManager.Initialize(null);
 

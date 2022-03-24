@@ -462,7 +462,7 @@ namespace Ryujinx.Ui
 
                 string titleArchSection = Device.Application.TitleIs64Bit ? " (64-bit)" : " (32-bit)";
 
-                parent.Title = $"Ryujinx {Program.Version}{titleNameSection}{titleVersionSection}{titleIdSection}{titleArchSection}";
+                parent.Title = $"Ryujinx-HDR-unofficial {Program.Version}{titleNameSection}{titleVersionSection}{titleIdSection}{titleArchSection}";
             });
 
             Thread renderLoopThread = new Thread(Render)
