@@ -59,7 +59,7 @@ namespace Ryujinx.Ui.Windows
 
         private void GitHubButton_Pressed(object sender, ButtonPressEventArgs args)
         {
-            OpenHelper.OpenUrl("https://github.com/Ryujinx/Ryujinx");
+            OpenHelper.OpenUrl("https://github.com/zandm7/Ryujinx-HDR");
         }
 
         private void DiscordButton_Pressed(object sender, ButtonPressEventArgs args)
