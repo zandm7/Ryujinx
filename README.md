@@ -23,16 +23,16 @@
 </h3>
 <ul>
   <li>
-    Ryujinx will automatically force-disable PPTC when necessary, so you can leave PPTC on in settings if you prefer <strike>PPTC should be <b>disabled</b> when playing HDR</strike>
+    Ryujinx will automatically force-disable PPTC when necessary, so you can leave PPTC on in settings
   </li>
   <li>
     <b>Leave VSync on</b> while playing HDR or else your game will be sped up
   </li>
   <li>
-    Graphics Backend Multithreading <i>should not</i> cause issues and should generally be left <b>on</b> <strike>Graphics Backend Multithreading can cause issues, especially with Nvidia GPUs. Consider disabling in Ryujinx and enabling driver-level multithreading instead</strike>
+    Graphics Backend Multithreading <i>should not</i> cause issues and should generally be left <b>on</b>
   </li>
   <li>
-    Vulkan rendering is available in this build, but OpenGL is the default for safety/compatibility reasons
+    Vulkan rendering is available in this PR build (https://github.com/zandm7/Ryujinx-HDR/pull/12) which I will try to keep updated w/ master
   </li>
   <li>
     You should probably keep this separate from your vanilla Ryujinx installation lol
@@ -46,6 +46,6 @@
     https://github.com/Ryujinx/Ryujinx/pull/2966 (mod compatibility)
   </li>
   <li>
-    https://github.com/Ryujinx/Ryujinx/pull/2518 (Vulkan support)
+    (Reverted as it broke OpenGL) <strike>https://github.com/Ryujinx/Ryujinx/pull/2518 (Vulkan support)</strike>
   </li>
 </ul>
