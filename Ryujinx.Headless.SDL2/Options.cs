@@ -93,9 +93,6 @@ namespace Ryujinx.Headless.SDL2
 
         [Option("enable-shader-cache", Required = false, Default = true, HelpText = "Enables Shader cache.")]
         public bool? EnableShaderCache { get; set; }
-        
-        [Option("enable-spir-v", Required = false, Default = true, HelpText = "Enables SPIR-V.")]
-        public bool? EnableSpirvCompilation { get; set; }
 
         [Option("enable-docked-mode", Required = false, Default = true, HelpText = "Enables Docked Mode.")]
         public bool? EnableDockedMode { get; set; }
@@ -161,7 +158,7 @@ namespace Ryujinx.Headless.SDL2
         [Option("aspect-ratio", Required = false, Default = AspectRatio.Fixed16x9, HelpText = "Aspect Ratio applied to the renderer window.")]
         public AspectRatio AspectRatio { get; set; }
 
-        [Option("backend-threading", Required = false, Default = BackendThreading.Off, HelpText = "Whether or not backend threading is enabled. The \"Auto\" setting will determine whether threading should be enabled at runtime.")]
+        [Option("backend-threading", Required = false, Default = BackendThreading.Auto, HelpText = "Whether or not backend threading is enabled. The \"Auto\" setting will determine whether threading should be enabled at runtime.")]
         public BackendThreading BackendThreading { get; set; }
 
         [Option("graphics-shaders-dump-path", Required = false, HelpText = "Dumps shaders in this local directory. (Developer only)")]

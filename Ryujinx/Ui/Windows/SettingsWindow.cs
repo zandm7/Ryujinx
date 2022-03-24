@@ -53,7 +53,6 @@ namespace Ryujinx.Ui.Windows
         [GUI] CheckButton     _hideCursorOnIdleToggle;
         [GUI] CheckButton     _vSyncToggle;
         [GUI] CheckButton     _shaderCacheToggle;
-        [GUI] CheckButton     _spirvToggle;
         [GUI] CheckButton     _ptcToggle;
         [GUI] CheckButton     _internetToggle;
         [GUI] CheckButton     _fsicToggle;
@@ -229,11 +228,6 @@ namespace Ryujinx.Ui.Windows
             if (ConfigurationState.Instance.Graphics.EnableShaderCache)
             {
                 _shaderCacheToggle.Click();
-            }
-
-            if (ConfigurationState.Instance.Graphics.EnableSpirvCompilation)
-            {
-                _spirvToggle.Click();
             }
 
             if (ConfigurationState.Instance.System.EnablePtc)
@@ -517,7 +511,6 @@ namespace Ryujinx.Ui.Windows
             ConfigurationState.Instance.HideCursorOnIdle.Value                 = _hideCursorOnIdleToggle.Active;
             ConfigurationState.Instance.Graphics.EnableVsync.Value             = _vSyncToggle.Active;
             ConfigurationState.Instance.Graphics.EnableShaderCache.Value       = _shaderCacheToggle.Active;
-            ConfigurationState.Instance.Graphics.EnableSpirvCompilation.Value  = _spirvToggle.Active;
             ConfigurationState.Instance.System.EnablePtc.Value                 = _ptcToggle.Active;
             ConfigurationState.Instance.System.EnableInternetAccess.Value      = _internetToggle.Active;
             ConfigurationState.Instance.System.EnableFsIntegrityChecks.Value   = _fsicToggle.Active;

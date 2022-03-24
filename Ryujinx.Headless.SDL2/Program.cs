@@ -80,7 +80,6 @@ namespace Ryujinx.Headless.SDL2
             _inputManager = new InputManager(new SDL2KeyboardDriver(), new SDL2GamepadDriver());
 
             GraphicsConfig.EnableShaderCache = true;
-            GraphicsConfig.EnableSpirvCompilation = true;
 
             Parser.Default.ParseArguments<Options>(args)
             .WithParsed(options => Load(options))
@@ -408,8 +407,6 @@ namespace Ryujinx.Headless.SDL2
 
             // Setup graphics configuration
             GraphicsConfig.EnableShaderCache = (bool)option.EnableShaderCache && option.GraphicsBackend != GraphicsBackend.Vulkan;
-            GraphicsConfig.EnableSpirvCompilation = (bool)option.EnableSpirvCompilation &&
-                                                    option.GraphicsBackend != GraphicsBackend.OpenGl;
             GraphicsConfig.ResScale = option.ResScale;
             GraphicsConfig.MaxAnisotropy = option.MaxAnisotropy;
             GraphicsConfig.ShadersDumpPath = option.GraphicsShadersDumpPath;
