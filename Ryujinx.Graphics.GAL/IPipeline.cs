@@ -76,13 +76,15 @@ namespace Ryujinx.Graphics.GAL
         void SetRenderTargetColorMasks(ReadOnlySpan<uint> componentMask);
         void SetRenderTargets(ITexture[] colors, ITexture depthStencil);
 
-        void SetScissors(ReadOnlySpan<Rectangle<int>> regions);
+        void SetSampler(int binding, ISampler sampler);
+
+        void SetScissor(int index, bool enable, int x, int y, int width, int height);
 
         void SetStencilTest(StencilTestDescriptor stencilTest);
 
         void SetStorageBuffers(int first, ReadOnlySpan<BufferRange> buffers);
 
-        void SetTextureAndSampler(int binding, ITexture texture, ISampler sampler);
+        void SetTexture(int binding, ITexture texture);
 
         void SetTransformFeedbackBuffers(ReadOnlySpan<BufferRange> buffers);
         void SetUniformBuffers(int first, ReadOnlySpan<BufferRange> buffers);

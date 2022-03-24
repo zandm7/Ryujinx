@@ -26,7 +26,6 @@ namespace Ryujinx.Graphics.Shader
 
         public void Prepend(string line)
         {
-            System.Console.WriteLine("prepend " + line);
             Code = line + Environment.NewLine + Code;
         }
     }

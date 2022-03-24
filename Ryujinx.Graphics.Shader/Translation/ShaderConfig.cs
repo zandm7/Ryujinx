@@ -41,7 +41,9 @@ namespace Ryujinx.Graphics.Shader.Translation
 
         public FeatureFlags UsedFeatures { get; private set; }
 
-        public HashSet<int> TextureHandlesForCache { get; } = new HashSet<int>();
+        public HashSet<int> TextureHandlesForCache { get; }
+
+        private readonly TranslationCounts _counts;
 
         public bool NextUsesFixedFuncAttributes { get; private set; }
         public int UsedInputAttributes { get; private set; }
@@ -110,17 +112,18 @@ namespace Ryujinx.Graphics.Shader.Translation
         public int FirstConstantBufferBinding { get; private set; }
         public int FirstStorageBufferBinding { get; private set; }
 
-        public ShaderConfig(IGpuAccessor gpuAccessor, TranslationOptions options)
+        public ShaderConfig(IGpuAccessor gpuAccessor, TranslationOptions options, TranslationCounts counts)
         {
             Stage                  = ShaderStage.Compute;
             GpuAccessor            = gpuAccessor;
             Options                = options;
+            _counts                = counts;
             TextureHandlesForCache = new HashSet<int>();
             _usedTextures          = new Dictionary<TextureInfo, TextureMeta>();
             _usedImages            = new Dictionary<TextureInfo, TextureMeta>();
         }
 
-        public ShaderConfig(ShaderHeader header, IGpuAccessor gpuAccessor, TranslationOptions options) : this(gpuAccessor, options)
+        public ShaderConfig(ShaderHeader header, IGpuAccessor gpuAccessor, TranslationOptions options, TranslationCounts counts) : this(gpuAccessor, options, counts)
         {
             Stage                    = header.Stage;
             GpPassthrough            = header.Stage == ShaderStage.Geometry && header.GpPassthrough;
@@ -482,9 +485,13 @@ namespace Ryujinx.Graphics.Shader.Translation
                 usedMask |= (int)GpuAccessor.QueryConstantBufferUse();
             }
 
-            FirstConstantBufferBinding = GetConstantBufferBinding(0);
+            FirstConstantBufferBinding = _counts.UniformBuffersCount;
 
-            return _cachedConstantBufferDescriptors = GetBufferDescriptors(usedMask, 0, GetConstantBufferBinding);
+            return _cachedConstantBufferDescriptors = GetBufferDescriptors(
+                usedMask,
+                0,
+                UsedFeatures.HasFlag(FeatureFlags.CbIndexing),
+                _counts.IncrementUniformBuffersCount);
         }
 
         public BufferDescriptor[] GetStorageBufferDescriptors()
@@ -494,20 +501,41 @@ namespace Ryujinx.Graphics.Shader.Translation
                 return _cachedStorageBufferDescriptors;
             }
 
-            FirstStorageBufferBinding = GetStorageBufferBinding(0);
+            FirstStorageBufferBinding = _counts.StorageBuffersCount;
 
-            return _cachedStorageBufferDescriptors = GetBufferDescriptors(_usedStorageBuffers, _usedStorageBuffersWrite, GetStorageBufferBinding);
+            return _cachedStorageBufferDescriptors = GetBufferDescriptors(
+                _usedStorageBuffers,
+                _usedStorageBuffersWrite,
+                true,
+                _counts.IncrementStorageBuffersCount);
         }
 
-        private static BufferDescriptor[] GetBufferDescriptors(int usedMask, int writtenMask, Func<int, int> getBindingCallback)
+        private static BufferDescriptor[] GetBufferDescriptors(
+            int usedMask,
+            int writtenMask,
+            bool isArray,
+            Func<int> getBindingCallback)
         {
             var descriptors = new BufferDescriptor[BitOperations.PopCount((uint)usedMask)];
+
+            int lastSlot = -1;
 
             for (int i = 0; i < descriptors.Length; i++)
             {
                 int slot = BitOperations.TrailingZeroCount(usedMask);
 
-                descriptors[i] = new BufferDescriptor(getBindingCallback(slot), slot);
+                if (isArray)
+                {
+                    // The next array entries also consumes bindings, even if they are unused.
+                    for (int j = lastSlot + 1; j < slot; j++)
+                    {
+                        getBindingCallback();
+                    }
+                }
+
+                lastSlot = slot;
+
+                descriptors[i] = new BufferDescriptor(getBindingCallback(), slot);
 
                 if ((writtenMask & (1 << slot)) != 0)
                 {
@@ -522,15 +550,15 @@ namespace Ryujinx.Graphics.Shader.Translation
 
         public TextureDescriptor[] GetTextureDescriptors()
         {
-            return _cachedTextureDescriptors ??= GetTextureOrImageDescriptors(_usedTextures, GetTextureBinding);
+            return _cachedTextureDescriptors ??= GetTextureOrImageDescriptors(_usedTextures, _counts.IncrementTexturesCount);
         }
 
         public TextureDescriptor[] GetImageDescriptors()
         {
-            return _cachedImageDescriptors ??= GetTextureOrImageDescriptors(_usedImages, GetImageBinding);
+            return _cachedImageDescriptors ??= GetTextureOrImageDescriptors(_usedImages, _counts.IncrementImagesCount);
         }
 
-        private static TextureDescriptor[] GetTextureOrImageDescriptors(Dictionary<TextureInfo, TextureMeta> dict, Func<int, int> getBindingCallback)
+        private static TextureDescriptor[] GetTextureOrImageDescriptors(Dictionary<TextureInfo, TextureMeta> dict, Func<int> getBindingCallback)
         {
             var descriptors = new TextureDescriptor[dict.Count];
 
@@ -540,7 +568,7 @@ namespace Ryujinx.Graphics.Shader.Translation
                 var info = kv.Key;
                 var meta = kv.Value;
 
-                int binding = getBindingCallback(i);
+                int binding = getBindingCallback();
 
                 descriptors[i] = new TextureDescriptor(binding, meta.Type, info.Format, info.CbufSlot, info.Handle);
                 descriptors[i].SetFlag(meta.UsageFlags);
@@ -548,40 +576,6 @@ namespace Ryujinx.Graphics.Shader.Translation
             }
 
             return descriptors;
-        }
-
-        private int GetConstantBufferBinding(int index)
-        {
-            return 1 + GetStageIndex() * 18 + index;
-        }
-
-        private int GetStorageBufferBinding(int index)
-        {
-            return GetStageIndex() * 16 + index;
-        }
-
-        private int GetTextureBinding(int index)
-        {
-            return GetStageIndex() * 32 + index;
-        }
-
-        private int GetImageBinding(int index)
-        {
-            return GetStageIndex() * 8 + index;
-        }
-
-        private int GetStageIndex()
-        {
-            return Stage switch
-            {
-                ShaderStage.Compute => 0,
-                ShaderStage.Vertex => 0,
-                ShaderStage.Fragment => 1,
-                ShaderStage.Geometry => 2,
-                ShaderStage.TessellationControl => 3,
-                ShaderStage.TessellationEvaluation => 4,
-                _ => 0
-            };
         }
     }
 }

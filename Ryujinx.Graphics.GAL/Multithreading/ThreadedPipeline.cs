@@ -1,6 +1,7 @@
 ﻿using Ryujinx.Graphics.GAL.Multithreading.Commands;
 using Ryujinx.Graphics.GAL.Multithreading.Model;
 using Ryujinx.Graphics.GAL.Multithreading.Resources;
+using Ryujinx.Graphics.Shader;
 using System;
 using System.Linq;
 
@@ -244,9 +245,15 @@ namespace Ryujinx.Graphics.GAL.Multithreading
             _renderer.QueueCommand();
         }
 
-        public void SetScissors(ReadOnlySpan<Rectangle<int>> scissors)
+        public void SetSampler(int binding, ISampler sampler)
         {
-            _renderer.New<SetScissorsCommand>().Set(_renderer.CopySpan(scissors));
+            _renderer.New<SetSamplerCommand>().Set(binding, Ref(sampler));
+            _renderer.QueueCommand();
+        }
+
+        public void SetScissor(int index, bool enable, int x, int y, int width, int height)
+        {
+            _renderer.New<SetScissorCommand>().Set(index, enable, x, y, width, height);
             _renderer.QueueCommand();
         }
 
@@ -262,9 +269,9 @@ namespace Ryujinx.Graphics.GAL.Multithreading
             _renderer.QueueCommand();
         }
 
-        public void SetTextureAndSampler(int binding, ITexture texture, ISampler sampler)
+        public void SetTexture(int binding, ITexture texture)
         {
-            _renderer.New<SetTextureAndSamplerCommand>().Set(binding, Ref(texture), Ref(sampler));
+            _renderer.New<SetTextureCommand>().Set(binding, Ref(texture));
             _renderer.QueueCommand();
         }
 

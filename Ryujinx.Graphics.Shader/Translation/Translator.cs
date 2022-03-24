@@ -1,5 +1,4 @@
 using Ryujinx.Graphics.Shader.CodeGen.Glsl;
-using Ryujinx.Graphics.Shader.CodeGen.Spirv;
 using Ryujinx.Graphics.Shader.Decoders;
 using Ryujinx.Graphics.Shader.IntermediateRepresentation;
 using Ryujinx.Graphics.Shader.StructuredIr;
@@ -26,9 +25,15 @@ namespace Ryujinx.Graphics.Shader.Translation
             }
         }
 
-        public static TranslatorContext CreateContext(ulong address, IGpuAccessor gpuAccessor, TranslationOptions options)
+        public static TranslatorContext CreateContext(
+            ulong address,
+            IGpuAccessor gpuAccessor,
+            TranslationOptions options,
+            TranslationCounts counts = null)
         {
-            return DecodeShader(address, gpuAccessor, options);
+            counts ??= new TranslationCounts();
+
+            return DecodeShader(address, gpuAccessor, options, counts);
         }
 
         internal static ShaderProgram Translate(FunctionCode[] functions, ShaderConfig config, out ShaderProgramInfo shaderProgramInfo)
@@ -73,20 +78,25 @@ namespace Ryujinx.Graphics.Shader.Translation
                     Ssa.Rename(cfg.Blocks);
 
                     Optimizer.RunPass(cfg.Blocks, config);
+
                     Rewriter.RunPass(cfg.Blocks, config);
                 }
 
                 funcs[i] = new Function(cfg.Blocks, $"fun{i}", false, inArgumentsCount, outArgumentsCount);
             }
 
-            var sInfo = StructuredProgram.MakeStructuredProgram(funcs, config);
+            StructuredProgramInfo sInfo = StructuredProgram.MakeStructuredProgram(funcs, config);
 
-            ShaderProgram program = config.Options.TargetLanguage switch
+            ShaderProgram program;
+
+            switch (config.Options.TargetLanguage)
             {
-                TargetLanguage.Glsl => new ShaderProgram(config.Stage, GlslGenerator.Generate(sInfo, config)),
-                TargetLanguage.Spirv => new ShaderProgram(config.Stage, SpirvGenerator.Generate(sInfo, config)),
-                _ => throw new NotImplementedException(config.Options.TargetLanguage.ToString())
-            };
+                case TargetLanguage.Glsl:
+                    program = new ShaderProgram(config.Stage, GlslGenerator.Generate(sInfo, config));
+                    break;
+                default:
+                    throw new NotImplementedException(config.Options.TargetLanguage.ToString());
+            }
 
             shaderProgramInfo = new ShaderProgramInfo(
                 config.GetConstantBufferDescriptors(),
@@ -101,21 +111,21 @@ namespace Ryujinx.Graphics.Shader.Translation
             return program;
         }
 
-        private static TranslatorContext DecodeShader(ulong address, IGpuAccessor gpuAccessor, TranslationOptions options)
+        private static TranslatorContext DecodeShader(ulong address, IGpuAccessor gpuAccessor, TranslationOptions options, TranslationCounts counts)
         {
             ShaderConfig config;
             DecodedProgram program;
             ulong maxEndAddress = 0;
 
-            if (options.Flags.HasFlag(TranslationFlags.Compute))
+            if ((options.Flags & TranslationFlags.Compute) != 0)
             {
-                config = new ShaderConfig(gpuAccessor, options);
+                config = new ShaderConfig(gpuAccessor, options, counts);
 
                 program = Decoder.Decode(config, address);
             }
             else
             {
-                config = new ShaderConfig(new ShaderHeader(gpuAccessor, address), gpuAccessor, options);
+                config = new ShaderConfig(new ShaderHeader(gpuAccessor, address), gpuAccessor, options, counts);
 
                 program = Decoder.Decode(config, address + HeaderSize);
             }

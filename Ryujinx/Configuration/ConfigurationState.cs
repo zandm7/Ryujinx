@@ -368,16 +368,6 @@ namespace Ryujinx.Configuration
             /// Enables or disables Shader cache
             /// </summary>
             public ReactiveObject<bool> EnableShaderCache { get; private set; }
-            
-            /// <summary>
-            /// Enables or disables SPIR-V shader compilation
-            /// </summary>
-            public ReactiveObject<bool> EnableSpirvCompilation { get; private set; }
-
-            /// <summary>
-            /// Graphics backend
-            /// </summary>
-            public ReactiveObject<GraphicsBackend> GraphicsBackend { get; private set; }
 
             public GraphicsSection()
             {
@@ -396,11 +386,6 @@ namespace Ryujinx.Configuration
                 EnableVsync.Event       += static (sender, e) => LogValueChange(sender, e, nameof(EnableVsync));
                 EnableShaderCache       = new ReactiveObject<bool>();
                 EnableShaderCache.Event += static (sender, e) => LogValueChange(sender, e, nameof(EnableShaderCache));
-                EnableSpirvCompilation = new ReactiveObject<bool>();
-                EnableSpirvCompilation.Event +=
-                    static (sender, e) => LogValueChange(sender, e, nameof(EnableSpirvCompilation));
-                GraphicsBackend         = new ReactiveObject<GraphicsBackend>();
-                GraphicsBackend.Event   += static (sender, e) => LogValueChange(sender, e, nameof(GraphicsBackend));
             }
         }
 
@@ -500,7 +485,6 @@ namespace Ryujinx.Configuration
                 HideCursorOnIdle          = HideCursorOnIdle,
                 EnableVsync               = Graphics.EnableVsync,
                 EnableShaderCache         = Graphics.EnableShaderCache,
-                EnableSpirvCompilation    = Graphics.EnableSpirvCompilation,
                 EnablePtc                 = System.EnablePtc,
                 EnableInternetAccess      = System.EnableInternetAccess,
                 EnableFsIntegrityChecks   = System.EnableFsIntegrityChecks,
@@ -539,7 +523,6 @@ namespace Ryujinx.Configuration
                 KeyboardConfig            = new List<object>(),
                 ControllerConfig          = new List<object>(),
                 InputConfig               = Hid.InputConfig,
-                GraphicsBackend           = Graphics.GraphicsBackend,
             };
 
             return configurationFile;
@@ -548,12 +531,11 @@ namespace Ryujinx.Configuration
         public void LoadDefault()
         {
             Logger.EnableFileLog.Value             = true;
-            Graphics.BackendThreading.Value        = BackendThreading.Off;
+            Graphics.BackendThreading.Value        = BackendThreading.Auto;
             Graphics.ResScale.Value                = 1;
             Graphics.ResScaleCustom.Value          = 1.0f;
             Graphics.MaxAnisotropy.Value           = -1.0f;
             Graphics.AspectRatio.Value             = AspectRatio.Fixed16x9;
-            Graphics.GraphicsBackend.Value         = GraphicsBackend.OpenGl;
             Graphics.ShadersDumpPath.Value         = "";
             Logger.EnableDebug.Value               = false;
             Logger.EnableStub.Value                = true;
@@ -576,8 +558,7 @@ namespace Ryujinx.Configuration
             HideCursorOnIdle.Value                 = false;
             Graphics.EnableVsync.Value             = true;
             Graphics.EnableShaderCache.Value       = true;
-            Graphics.EnableSpirvCompilation.Value  = true;
-            System.EnablePtc.Value                 = false;
+            System.EnablePtc.Value                 = true;
             System.EnableInternetAccess.Value      = false;
             System.EnableFsIntegrityChecks.Value   = true;
             System.FsGlobalAccessLogMode.Value     = 0;
@@ -1053,7 +1034,6 @@ namespace Ryujinx.Configuration
             Graphics.MaxAnisotropy.Value           = configurationFileFormat.MaxAnisotropy;
             Graphics.AspectRatio.Value             = configurationFileFormat.AspectRatio;
             Graphics.ShadersDumpPath.Value         = configurationFileFormat.GraphicsShadersDumpPath;
-            Graphics.GraphicsBackend.Value         = configurationFileFormat.GraphicsBackend;
             Logger.EnableDebug.Value               = configurationFileFormat.LoggingEnableDebug;
             Logger.EnableStub.Value                = configurationFileFormat.LoggingEnableStub;
             Logger.EnableInfo.Value                = configurationFileFormat.LoggingEnableInfo;
@@ -1075,7 +1055,6 @@ namespace Ryujinx.Configuration
             HideCursorOnIdle.Value                 = configurationFileFormat.HideCursorOnIdle;
             Graphics.EnableVsync.Value             = configurationFileFormat.EnableVsync;
             Graphics.EnableShaderCache.Value       = configurationFileFormat.EnableShaderCache;
-            Graphics.EnableSpirvCompilation.Value  = configurationFileFormat.EnableSpirvCompilation;
             System.EnablePtc.Value                 = configurationFileFormat.EnablePtc;
             System.EnableInternetAccess.Value      = configurationFileFormat.EnableInternetAccess;
             System.EnableFsIntegrityChecks.Value   = configurationFileFormat.EnableFsIntegrityChecks;

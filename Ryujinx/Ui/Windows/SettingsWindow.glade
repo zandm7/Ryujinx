@@ -1900,51 +1900,6 @@
                                     <property name="position">1</property>
                                   </packing>
                                 </child>
-                                <child>
-                                  <object class="GtkBox">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="margin-top">5</property>
-                                    <property name="margin-bottom">5</property>
-                                    <child>
-                                      <object class="GtkLabel">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="tooltip-text" translatable="yes">Graphics Backend to use</property>
-                                        <property name="label" translatable="yes">Graphics Backend:</property>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="fill">True</property>
-                                        <property name="padding">5</property>
-                                        <property name="position">0</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkComboBoxText" id="_graphicsBackend">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="tooltip-text" translatable="yes">Graphics Backend to use</property>
-                                        <property name="active-id">-1</property>
-                                        <items>
-                                          <item id="0" translatable="yes">OpenGL</item>
-                                          <item id="1" translatable="yes">Vulkan</item>
-                                        </items>
-                                      </object>
-                                      <packing>
-                                        <property name="expand">False</property>
-                                        <property name="fill">True</property>
-                                        <property name="position">1</property>
-                                      </packing>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">True</property>
-                                    <property name="padding">5</property>
-                                    <property name="position">1</property>
-                                  </packing>
-                                </child>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -2001,23 +1956,6 @@
                                     <property name="receives-default">False</property>
                                     <property name="tooltip-text" translatable="yes">Enables or disables Shader Cache</property>
                                     <property name="halign">start</property>
-                                    <property name="margin-top">5</property>
-                                    <property name="margin-bottom">5</property>
-                                    <property name="draw-indicator">True</property>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">0</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkCheckButton" id="_spirvToggle">
-                                    <property name="label" translatable="yes">Enable SPIR-V</property>
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="receives-default">False</property>
-                                    <property name="tooltip-text" translatable="yes">Enables or disables SPIR-V shader compilation</property>
                                     <property name="margin-top">5</property>
                                     <property name="margin-bottom">5</property>
                                     <property name="draw-indicator">True</property>
@@ -2201,7 +2139,7 @@
                             <property name="expand">False</property>
                             <property name="fill">True</property>
                             <property name="padding">5</property>
-                            <property name="position">2</property>
+                            <property name="position">0</property>
                           </packing>
                         </child>
                         <child>
@@ -2213,7 +2151,7 @@
                             <property name="expand">False</property>
                             <property name="fill">True</property>
                             <property name="padding">5</property>
-                            <property name="position">3</property>
+                            <property name="position">1</property>
                           </packing>
                         </child>
                         <child>
@@ -2587,7 +2525,7 @@
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
                                         <property name="tooltip-text" translatable="yes">Requires appropriate log levels enabled.</property>
-                                        <property name="label" translatable="yes">Graphics Backend Log Level</property>
+                                        <property name="label" translatable="yes">OpenGL Log Level</property>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
