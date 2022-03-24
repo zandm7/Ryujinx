@@ -1094,25 +1094,45 @@ namespace Ryujinx.Graphics.OpenGL
             _framebuffer.SetDrawBuffers(colors.Length);
         }
 
-        public unsafe void SetScissors(ReadOnlySpan<Rectangle<int>> regions)
+        public void SetSampler(int binding, ISampler sampler)
         {
-            int count = Math.Min(regions.Length, Constants.MaxViewports);
-
-            int* v = stackalloc int[count * 4];
-
-            for (int index = 0; index < count; index++)
+            if (sampler == null)
             {
-                int vIndex = index * 4;
+                return;
+            }
 
-                v[vIndex] = regions[index].X;
-                v[vIndex + 1] = regions[index].Y;
-                v[vIndex + 2] = regions[index].Width;
-                v[vIndex + 3] = regions[index].Height;
+            Sampler samp = (Sampler)sampler;
 
+            if (binding == 0)
+            {
+                _unit0Sampler = samp;
+            }
+
+            samp.Bind(binding);
+        }
+
+        public void SetScissor(int index, bool enable, int x, int y, int width, int height)
+        {
+            uint mask = 1u << index;
+
+            if (!enable)
+            {
+                if ((_scissorEnables & mask) != 0)
+                {
+                    _scissorEnables &= ~mask;
+                    GL.Disable(IndexedEnableCap.ScissorTest, index);
+                }
+
+                return;
+            }
+
+            if ((_scissorEnables & mask) == 0)
+            {
+                _scissorEnables |= mask;
                 GL.Enable(IndexedEnableCap.ScissorTest, index);
             }
 
-            GL.ScissorArray(0, count, v);
+            GL.ScissorIndexed(index, x, y, width, height);
         }
 
         public void SetStencilTest(StencilTestDescriptor stencilTest)
@@ -1163,24 +1183,22 @@ namespace Ryujinx.Graphics.OpenGL
             SetBuffers(first, buffers, isStorage: true);
         }
 
-        public void SetTextureAndSampler(int binding, ITexture texture, ISampler sampler)
+        public void SetTexture(int binding, ITexture texture)
         {
-            if (texture != null && sampler != null)
+            if (texture == null)
             {
-                if (binding == 0)
-                {
-                    _unit0Texture = (TextureBase)texture;
-                    _unit0Sampler = (Sampler)sampler;
-                }
-                else
-                {
-                    ((TextureBase)texture).Bind(binding);
-                }
+                return;
+            }
 
-                ((Sampler)sampler).Bind(binding);
+            if (binding == 0)
+            {
+                _unit0Texture = (TextureBase)texture;
+            }
+            else
+            {
+                ((TextureBase)texture).Bind(binding);
             }
         }
-
 
         public void SetTransformFeedbackBuffers(ReadOnlySpan<BufferRange> buffers)
         {

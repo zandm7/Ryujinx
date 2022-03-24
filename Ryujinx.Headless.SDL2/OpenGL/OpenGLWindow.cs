@@ -108,9 +108,14 @@ namespace Ryujinx.Headless.SDL2.OpenGL
             _glLogLevel = glLogLevel;
         }
 
+        protected override string GetGpuVendorName()
+        {
+            return ((Renderer)Renderer).GpuVendor;
+        }
+
         public override SDL_WindowFlags GetWindowFlags() => SDL_WindowFlags.SDL_WINDOW_OPENGL;
 
-        protected override void InitializeWindowRenderer()
+        protected override void InitializeRenderer()
         {
             // Ensure to not share this context with other contexts before this point.
             SetupOpenGLAttributes(false, _glLogLevel);
@@ -142,9 +147,7 @@ namespace Ryujinx.Headless.SDL2.OpenGL
             MouseDriver.SetClientSize(DefaultWidth, DefaultHeight);
         }
 
-        protected override void InitializeRenderer() { }
-
-        protected override void FinalizeWindowRenderer()
+        protected override void FinalizeRenderer()
         {
             // Try to bind the OpenGL context before calling the gpu disposal.
             _openGLContext.MakeCurrent();

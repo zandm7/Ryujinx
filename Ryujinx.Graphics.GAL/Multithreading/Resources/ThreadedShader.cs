@@ -8,39 +8,24 @@ namespace Ryujinx.Graphics.GAL.Multithreading.Resources
     {
         private ThreadedRenderer _renderer;
         private ShaderStage _stage;
-        private ShaderBindings _bindings;
         private string _code;
-        private byte[] _binaryCode;
 
         public IShader Base;
 
-        public ThreadedShader(ThreadedRenderer renderer, ShaderStage stage, ShaderBindings bindings, string code)
+        public ThreadedShader(ThreadedRenderer renderer, ShaderStage stage, string code)
         {
             _renderer = renderer;
-
+            
             _stage = stage;
-            _bindings = bindings;
             _code = code;
-        }
-
-        public ThreadedShader(ThreadedRenderer renderer, ShaderStage stage, ShaderBindings bindings, byte[] code)
-        {
-            _renderer = renderer;
-
-            _stage = stage;
-            _bindings = bindings;
-            _binaryCode = code;
         }
 
         internal void EnsureCreated()
         {
-            if ((_code != null || _binaryCode != null) && Base == null)
+            if (_code != null && Base == null)
             {
-                Base = _binaryCode != null
-                    ? _renderer.BaseRenderer.CompileShader(_stage, _bindings, _binaryCode)
-                    : _renderer.BaseRenderer.CompileShader(_stage, _bindings, _code);
+                Base = _renderer.BaseRenderer.CompileShader(_stage, _code);
                 _code = null;
-                _binaryCode = null;
             }
         }
 

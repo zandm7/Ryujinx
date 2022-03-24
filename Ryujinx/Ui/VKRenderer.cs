@@ -66,9 +66,9 @@ namespace Ryujinx.Ui
 
         public override void SwapBuffers() { }
 
-        protected override string GetGpuBackendName()
+        public override string GetGpuVendorName()
         {
-            return "Vulkan";
+            return "Vulkan (Unknown)";
         }
 
         protected override void Dispose(bool disposing)
