@@ -1,5 +1,5 @@
 <h1>
-  Ryujinx-HDR
+  NotRyujinx-HDR
 </h1>
 <h3>
   DISCLAIMER
@@ -46,6 +46,6 @@
     https://github.com/Ryujinx/Ryujinx/pull/2966 (mod compatibility)
   </li>
   <li>
-    (Reverted as it broke OpenGL) <strike>https://github.com/Ryujinx/Ryujinx/pull/2518 (Vulkan support)</strike>
+    (Reverted as it broke OpenGL; now available as a PR build instead) <strike>https://github.com/Ryujinx/Ryujinx/pull/2518 (Vulkan support)</strike>
   </li>
 </ul>
