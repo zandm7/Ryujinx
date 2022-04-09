@@ -10,7 +10,7 @@ namespace Ryujinx.Ui.Windows
 {
     public partial class AboutWindow : Window
     {
-        public AboutWindow() : base($"Ryujinx-HDR-unofficial {Program.Version} - About")
+        public AboutWindow() : base($"NotRyujinx-HDR {Program.Version} - About")
         {
             Icon = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.Resources.Logo_Ryujinx.png");
             InitializeComponent();
