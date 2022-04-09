@@ -86,7 +86,7 @@ jobs:
           name: ${{ steps.version_info.outputs.build_version }}
           artifacts: "release_output/*.tar.gz,release_output/*.zip"
           tag: ${{ steps.version_info.outputs.build_version }}
-          body: "idk bruh just look at the commit history lol"
+          body: "<insert changelog here> \n See https://github.com/zandm7/Ryujinx-HDR/pull/12 for the Vulkan build"
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
