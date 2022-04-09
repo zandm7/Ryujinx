@@ -30,7 +30,7 @@ namespace Ryujinx.Ui.Windows
 
         private ManualResetEvent _avatarsPreloadingEvent = new ManualResetEvent(false);
 
-        public UserProfilesManagerWindow(AccountManager accountManager, ContentManager contentManager, VirtualFileSystem virtualFileSystem) : base($"Ryujinx-HDR-unofficial {Program.Version} - Manage User Profiles")
+        public UserProfilesManagerWindow(AccountManager accountManager, ContentManager contentManager, VirtualFileSystem virtualFileSystem) : base($"NotRyujinx-HDR {Program.Version} - Manage User Profiles")
         {
             Icon = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.Resources.Logo_Ryujinx.png");
 

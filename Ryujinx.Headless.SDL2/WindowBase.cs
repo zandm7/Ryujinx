@@ -104,7 +104,7 @@ namespace Ryujinx.Headless.SDL2
 
             string titleArchSection = Device.Application.TitleIs64Bit ? " (64-bit)" : " (32-bit)";
 
-            WindowHandle = SDL_CreateWindow($"Ryujinx-HDR-unofficial {Program.Version}{titleNameSection}{titleVersionSection}{titleIdSection}{titleArchSection}", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, DefaultWidth, DefaultHeight, DefaultFlags | GetWindowFlags());
+            WindowHandle = SDL_CreateWindow($"NotRyujinx-HDR {Program.Version}{titleNameSection}{titleVersionSection}{titleIdSection}{titleArchSection}", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, DefaultWidth, DefaultHeight, DefaultFlags | GetWindowFlags());
 
             if (WindowHandle == IntPtr.Zero)
             {

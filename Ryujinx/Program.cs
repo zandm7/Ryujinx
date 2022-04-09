@@ -84,7 +84,7 @@ namespace Ryujinx
 
             Version = ReleaseInformations.GetVersion();
 
-            Console.Title = $"Ryujinx-HDR-unofficial Console {Version}";
+            Console.Title = $"NotRyujinx-HDR Console {Version}";
 
             // NOTE: GTK3 doesn't init X11 in a multi threaded way.
             // This ends up causing race condition and abort of XCB when a context is created by SPB (even if SPB do call XInitThreads).
@@ -190,7 +190,7 @@ namespace Ryujinx
 
         private static void PrintSystemInfo()
         {
-            Logger.Notice.Print(LogClass.Application, $"Ryujinx-HDR-unofficial Version: {Version}");
+            Logger.Notice.Print(LogClass.Application, $"NotRyujinx-HDR Version: {Version}");
             SystemInfo.Gather().Print();
 
             var enabledLogs = Logger.GetEnabledLevels();

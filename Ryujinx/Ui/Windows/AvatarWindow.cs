@@ -33,7 +33,7 @@ namespace Ryujinx.Ui.Windows
         private Button    _setBackgroungColorButton;
         private Gdk.RGBA  _backgroundColor;
 
-        public AvatarWindow() : base($"Ryujinx-HDR-unofficial {Program.Version} - Manage Accounts - Avatar")
+        public AvatarWindow() : base($"NotRyujinx-HDR {Program.Version} - Manage Accounts - Avatar")
         {
             Icon = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.Resources.Logo_Ryujinx.png");
 

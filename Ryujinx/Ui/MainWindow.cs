@@ -153,7 +153,7 @@ namespace Ryujinx.Ui
             DefaultHeight = monitorHeight < 760  ? monitorHeight : 760;
 
             Icon  = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.Resources.Logo_Ryujinx.png");
-            Title = $"Ryujinx-HDR-unofficial {Program.Version}";
+            Title = $"NotRyujinx-HDR {Program.Version}";
 
             // Hide emulation context status bar.
             _statusBar.Hide();
@@ -930,7 +930,7 @@ namespace Ryujinx.Ui
 
             _gameTableWindow.Expand = true;
 
-            Window.Title = $"Ryujinx-HDR-unofficial {Program.Version}";
+            Window.Title = $"NotRyujinx-HDR {Program.Version}";
 
             _emulationContext = null;
             _gameLoaded = false;
