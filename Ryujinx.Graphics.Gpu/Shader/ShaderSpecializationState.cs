@@ -395,9 +395,27 @@ namespace Ryujinx.Graphics.Gpu.Shader
         /// </summary>
         /// <param name="channel">GPU channel</param>
         /// <param name="poolState">Texture pool state</param>
+        /// <param name="graphicsState">Graphics state</param>
         /// <returns>True if the state matches, false otherwise</returns>
-        public bool MatchesGraphics(GpuChannel channel, GpuChannelPoolState poolState)
+        public bool MatchesGraphics(GpuChannel channel, GpuChannelPoolState poolState, GpuChannelGraphicsState graphicsState)
         {
+            if (graphicsState.DepthMode != GraphicsState.DepthMode)
+            {
+                return false;
+            }
+
+            if (graphicsState.AlphaTestEnable != GraphicsState.AlphaTestEnable ||
+                graphicsState.AlphaTestCompare != GraphicsState.AlphaTestCompare ||
+                graphicsState.AlphaTestReference != GraphicsState.AlphaTestReference)
+            {
+                return false;
+            }
+
+            if (!graphicsState.AttributeTypes.ToSpan().SequenceEqual(GraphicsState.AttributeTypes.ToSpan()))
+            {
+                return false;
+            }
+
             return Matches(channel, poolState, isCompute: false);
         }
 

@@ -1,5 +1,7 @@
+using Ryujinx.Common.Memory;
 using Ryujinx.Graphics.GAL;
 using Ryujinx.Graphics.Gpu.Engine.Threed;
+using Ryujinx.Graphics.Shader;
 
 namespace Ryujinx.Graphics.Gpu.Shader
 {
@@ -56,6 +58,11 @@ namespace Ryujinx.Graphics.Gpu.Shader
         public readonly float AlphaTestReference;
 
         /// <summary>
+        /// Type of the vertex attributes consumed by the shader.
+        /// </summary>
+        public Array32<AttributeType> AttributeTypes;
+
+        /// <summary>
         /// Creates a new GPU graphics state.
         /// </summary>
         /// <param name="earlyZForce">Early Z force enable</param>
@@ -67,6 +74,7 @@ namespace Ryujinx.Graphics.Gpu.Shader
         /// <param name="alphaTestEnable">Indicates whenever alpha test is enabled</param>
         /// <param name="alphaTestCompare">When alpha test is enabled, indicates the comparison that decides if the fragment is discarded</param>
         /// <param name="alphaTestReference">When alpha test is enabled, indicates the value to compare with the fragment output alpha</param>
+        /// <param name="attributeTypes">Type of the vertex attributes consumed by the shader</param>
         public GpuChannelGraphicsState(
             bool earlyZForce,
             PrimitiveTopology topology,
@@ -76,7 +84,8 @@ namespace Ryujinx.Graphics.Gpu.Shader
             float pointSize,
             bool alphaTestEnable,
             CompareOp alphaTestCompare,
-            float alphaTestReference)
+            float alphaTestReference,
+            ref Array32<AttributeType> attributeTypes)
         {
             EarlyZForce = earlyZForce;
             Topology = topology;
@@ -87,6 +96,7 @@ namespace Ryujinx.Graphics.Gpu.Shader
             AlphaTestEnable = alphaTestEnable;
             AlphaTestCompare = alphaTestCompare;
             AlphaTestReference = alphaTestReference;
+            AttributeTypes = attributeTypes;
         }
     }
 }
