@@ -1,4 +1,5 @@
 using Ryujinx.Common.Memory;
+using Ryujinx.Graphics.GAL;
 using Ryujinx.Graphics.Gpu.Shader.DiskCache;
 using Ryujinx.Graphics.Shader;
 using System;
@@ -14,6 +15,7 @@ namespace Ryujinx.Graphics.Gpu.Shader
         private const uint TfbdMagic = (byte)'T' | ((byte)'F' << 8) | ((byte)'B' << 16) | ((byte)'D' << 24);
         private const uint TexkMagic = (byte)'T' | ((byte)'E' << 8) | ((byte)'X' << 16) | ((byte)'K' << 24);
         private const uint TexsMagic = (byte)'T' | ((byte)'E' << 8) | ((byte)'X' << 16) | ((byte)'S' << 24);
+        private const uint PgpsMagic = (byte)'P' | ((byte)'G' << 8) | ((byte)'P' << 16) | ((byte)'S' << 24);
 
         /// <summary>
         /// Flags indicating GPU state that is used by the shader.
@@ -45,6 +47,11 @@ namespace Ryujinx.Graphics.Gpu.Shader
         /// Contant buffers bound at the time the shader was compiled, per stage.
         /// </summary>
         public Array5<uint> ConstantBufferUse;
+
+        /// <summary>
+        /// Optional pipeline state captured at the time of the shader use.
+        /// </summary>
+        public ProgramPipelineState? PipelineState;
 
         /// <summary>
         /// Transform feedback buffers active at the time the shader was compiled.
@@ -171,7 +178,7 @@ namespace Ryujinx.Graphics.Gpu.Shader
         /// Creates a new instance of the shader specialization state.
         /// </summary>
         /// <param name="state">Current compute engine state</param>
-        public ShaderSpecializationState(GpuChannelComputeState state) : this()
+        public ShaderSpecializationState(ref GpuChannelComputeState state) : this()
         {
             ComputeState = state;
             _compute = true;
@@ -182,7 +189,7 @@ namespace Ryujinx.Graphics.Gpu.Shader
         /// </summary>
         /// <param name="state">Current 3D engine state</param>
         /// <param name="descriptors">Optional transform feedback buffers in use, if any</param>
-        public ShaderSpecializationState(GpuChannelGraphicsState state, TransformFeedbackDescriptor[] descriptors) : this()
+        private ShaderSpecializationState(ref GpuChannelGraphicsState state, TransformFeedbackDescriptor[] descriptors) : this()
         {
             GraphicsState = state;
             _compute = false;
@@ -192,6 +199,34 @@ namespace Ryujinx.Graphics.Gpu.Shader
                 TransformFeedbackDescriptors = descriptors;
                 _queriedState |= QueriedStateFlags.TransformFeedback;
             }
+        }
+
+        /// <summary>
+        /// Creates a new instance of the shader specialization state.
+        /// </summary>
+        /// <param name="state">Current 3D engine state</param>
+        /// <param name="pipelineState">Current program pipeline state</param>
+        /// <param name="descriptors">Optional transform feedback buffers in use, if any</param>
+        public ShaderSpecializationState(
+            ref GpuChannelGraphicsState state,
+            ref ProgramPipelineState pipelineState,
+            TransformFeedbackDescriptor[] descriptors) : this(ref state, descriptors)
+        {
+            PipelineState = pipelineState;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the shader specialization state.
+        /// </summary>
+        /// <param name="state">Current 3D engine state</param>
+        /// <param name="pipelineState">Current program pipeline state</param>
+        /// <param name="descriptors">Optional transform feedback buffers in use, if any</param>
+        public ShaderSpecializationState(
+            ref GpuChannelGraphicsState state,
+            ProgramPipelineState? pipelineState,
+            TransformFeedbackDescriptor[] descriptors) : this(ref state, descriptors)
+        {
+            PipelineState = pipelineState;
         }
 
         /// <summary>
@@ -553,6 +588,17 @@ namespace Ryujinx.Graphics.Gpu.Shader
                 constantBufferUsePerStageMask &= ~(1 << index);
             }
 
+            bool hasPipelineState = false;
+
+            dataReader.Read(ref hasPipelineState);
+
+            if (hasPipelineState)
+            {
+                ProgramPipelineState pipelineState = default;
+                dataReader.ReadWithMagicAndSize(ref pipelineState, PgpsMagic);
+                specState.PipelineState = pipelineState;
+            }
+
             if (specState._queriedState.HasFlag(QueriedStateFlags.TransformFeedback))
             {
                 ushort tfCount = 0;
@@ -609,6 +655,16 @@ namespace Ryujinx.Graphics.Gpu.Shader
                 int index = BitOperations.TrailingZeroCount(constantBufferUsePerStageMask);
                 dataWriter.Write(ref ConstantBufferUse[index]);
                 constantBufferUsePerStageMask &= ~(1 << index);
+            }
+
+            bool hasPipelineState = PipelineState.HasValue;
+
+            dataWriter.Write(ref hasPipelineState);
+
+            if (hasPipelineState)
+            {
+                ProgramPipelineState pipelineState = PipelineState.Value;
+                dataWriter.WriteWithMagicAndSize(ref pipelineState, PgpsMagic);
             }
 
             if (_queriedState.HasFlag(QueriedStateFlags.TransformFeedback))
