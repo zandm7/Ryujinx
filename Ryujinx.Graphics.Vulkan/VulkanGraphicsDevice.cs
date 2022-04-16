@@ -38,6 +38,7 @@ namespace Ryujinx.Graphics.Vulkan
         internal bool SupportsCustomBorderColor { get; private set; }
         internal bool SupportsIndirectParameters { get; private set; }
         internal bool SupportsFragmentShaderInterlock { get; private set; }
+        internal bool SupportsGeometryShaderPassthrough { get; private set; }
         internal bool SupportsSubgroupSizeControl { get; private set; }
 
         internal uint QueueFamilyIndex { get; private set; }
@@ -123,6 +124,7 @@ namespace Ryujinx.Graphics.Vulkan
             SupportsCustomBorderColor = supportedExtensions.Contains("VK_EXT_custom_border_color");
             SupportsIndirectParameters = supportedExtensions.Contains(KhrDrawIndirectCount.ExtensionName);
             SupportsFragmentShaderInterlock = supportedExtensions.Contains("VK_EXT_fragment_shader_interlock");
+            SupportsGeometryShaderPassthrough = supportedExtensions.Contains("VK_NV_geometry_shader_passthrough");
             SupportsSubgroupSizeControl = supportedExtensions.Contains("VK_EXT_subgroup_size_control");
 
             if (api.TryGetDeviceExtension(_instance, _device, out KhrSwapchain swapchainApi))
@@ -308,9 +310,10 @@ namespace Ryujinx.Graphics.Vulkan
                 supportsAstcCompression: features.TextureCompressionAstcLdr,
                 supports3DTextureCompression: true,
                 supportsBgraFormat: true,
-                supportsR4G4Format: false,
+                supportsR4G4Format: FormatCapabilities.FormatSupports(GAL.Format.R4G4Unorm, FormatFeatureFlags.FormatFeatureSampledImageBit),
                 supportsFragmentShaderInterlock: SupportsFragmentShaderInterlock,
                 supportsFragmentShaderOrderingIntel: false,
+                supportsGeometryShaderPassthrough: SupportsGeometryShaderPassthrough,
                 supportsImageLoadFormatted: features.ShaderStorageImageReadWithoutFormat,
                 supportsMismatchingViewFormat: true,
                 supportsNonConstantTextureOffset: false,
