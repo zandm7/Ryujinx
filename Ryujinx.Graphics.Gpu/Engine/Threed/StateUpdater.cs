@@ -932,7 +932,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
 
                     size = vbSize;
 
-                    if (stride > 0 && indexTypeSmall)
+                    if (stride > 0 && indexTypeSmall && _drawState.DrawIndexed && !instanced)
                     {
                         // If the index type is a small integer type, then we might be still able
                         // to reduce the vertex buffer size based on the maximum possible index value.
