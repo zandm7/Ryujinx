@@ -5,7 +5,9 @@ using Ryujinx.Memory.Range;
 using Ryujinx.Memory.Tracking;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Ryujinx.Cpu
@@ -38,7 +40,6 @@ namespace Ryujinx.Cpu
         private readonly bool _unsafeMode;
 
         private readonly MemoryBlock _addressSpace;
-        private readonly MemoryBlock _addressSpaceMirror;
         private readonly ulong _addressSpaceSize;
 
         private readonly MemoryBlock _backingMemory;
@@ -85,12 +86,7 @@ namespace Ryujinx.Cpu
             AddressSpaceBits = asBits;
 
             _pageBitmap = new ulong[1 << (AddressSpaceBits - (PageBits + PageToPteShift))];
-
-            MemoryAllocationFlags asFlags = MemoryAllocationFlags.Reserve | MemoryAllocationFlags.ViewCompatible;
-
-            _addressSpace = new MemoryBlock(asSize, asFlags);
-            _addressSpaceMirror = new MemoryBlock(asSize, asFlags | MemoryAllocationFlags.ForceWindows4KBViewMapping);
-
+            _addressSpace = new MemoryBlock(asSize, MemoryAllocationFlags.Reserve | MemoryAllocationFlags.ViewCompatible);
             Tracking = new MemoryTracking(this, PageSize, invalidAccessHandler);
             _memoryEh = new MemoryEhMeilleure(_addressSpace, Tracking);
         }
@@ -149,26 +145,11 @@ namespace Ryujinx.Cpu
         {
             AssertValidAddressAndSize(va, size);
 
-            _addressSpace.MapView(_backingMemory, pa, va, size);
-            _addressSpaceMirror.MapView(_backingMemory, pa, va, size);
-            AddMapping(va, size);
             PtMap(va, pa, size);
+            _addressSpace.MapView(_backingMemory, pa, va, size);
+            AddMapping(va, size);
 
             Tracking.Map(va, size);
-        }
-
-        /// <inheritdoc/>
-        public void Unmap(ulong va, ulong size)
-        {
-            AssertValidAddressAndSize(va, size);
-
-            UnmapEvent?.Invoke(va, size);
-            Tracking.Unmap(va, size);
-
-            RemoveMapping(va, size);
-            PtUnmap(va, size);
-            _addressSpace.UnmapView(_backingMemory, va, size);
-            _addressSpaceMirror.UnmapView(_backingMemory, va, size);
         }
 
         private void PtMap(ulong va, ulong pa, ulong size)
@@ -181,6 +162,19 @@ namespace Ryujinx.Cpu
                 pa += PageSize;
                 size -= PageSize;
             }
+        }
+
+        /// <inheritdoc/>
+        public void Unmap(ulong va, ulong size)
+        {
+            AssertValidAddressAndSize(va, size);
+
+            UnmapEvent?.Invoke(va, size);
+            Tracking.Unmap(va, size);
+
+            RemoveMapping(va, size);
+            _addressSpace.UnmapView(va, size);
+            PtUnmap(va, size);
         }
 
         private void PtUnmap(ulong va, ulong size)
@@ -197,21 +191,7 @@ namespace Ryujinx.Cpu
         /// <inheritdoc/>
         public T Read<T>(ulong va) where T : unmanaged
         {
-            try
-            {
-                AssertMapped(va, (ulong)Unsafe.SizeOf<T>());
-
-                return _addressSpaceMirror.Read<T>(va);
-            }
-            catch (InvalidMemoryRegionException)
-            {
-                if (_invalidAccessHandler == null || !_invalidAccessHandler(va))
-                {
-                    throw;
-                }
-
-                return default;
-            }
+            return MemoryMarshal.Cast<byte, T>(GetSpan(va, Unsafe.SizeOf<T>()))[0];
         }
 
         /// <inheritdoc/>
@@ -237,65 +217,73 @@ namespace Ryujinx.Cpu
         /// <inheritdoc/>
         public void Read(ulong va, Span<byte> data)
         {
-            try
-            {
-                AssertMapped(va, (ulong)data.Length);
-
-                _addressSpaceMirror.Read(va, data);
-            }
-            catch (InvalidMemoryRegionException)
-            {
-                if (_invalidAccessHandler == null || !_invalidAccessHandler(va))
-                {
-                    throw;
-                }
-            }
+            ReadImpl(va, data);
         }
-
 
         /// <inheritdoc/>
         public void Write<T>(ulong va, T value) where T : unmanaged
         {
-            try
-            {
-                SignalMemoryTracking(va, (ulong)Unsafe.SizeOf<T>(), write: true);
-
-                _addressSpaceMirror.Write(va, value);
-            }
-            catch (InvalidMemoryRegionException)
-            {
-                if (_invalidAccessHandler == null || !_invalidAccessHandler(va))
-                {
-                    throw;
-                }
-            }
+            Write(va, MemoryMarshal.Cast<T, byte>(MemoryMarshal.CreateSpan(ref value, 1)));
         }
 
         /// <inheritdoc/>
         public void Write(ulong va, ReadOnlySpan<byte> data)
         {
-            try {
-                SignalMemoryTracking(va, (ulong)data.Length, write: true);
-
-                _addressSpaceMirror.Write(va, data);
-            }
-            catch (InvalidMemoryRegionException)
+            if (data.Length == 0)
             {
-                if (_invalidAccessHandler == null || !_invalidAccessHandler(va))
-                {
-                    throw;
-                }
+                return;
             }
+
+            SignalMemoryTracking(va, (ulong)data.Length, true);
+
+            WriteImpl(va, data);
         }
 
         /// <inheritdoc/>
         public void WriteUntracked(ulong va, ReadOnlySpan<byte> data)
         {
+            if (data.Length == 0)
+            {
+                return;
+            }
+
+            WriteImpl(va, data);
+        }
+
+        private void WriteImpl(ulong va, ReadOnlySpan<byte> data)
+        {
             try
             {
-                AssertMapped(va, (ulong)data.Length);
+                AssertValidAddressAndSize(va, (ulong)data.Length);
 
-                _addressSpaceMirror.Write(va, data);
+                if (IsContiguousAndMapped(va, data.Length))
+                {
+                    data.CopyTo(_backingMemory.GetSpan(GetPhysicalAddressInternal(va), data.Length));
+                }
+                else
+                {
+                    int offset = 0, size;
+
+                    if ((va & PageMask) != 0)
+                    {
+                        ulong pa = GetPhysicalAddressInternal(va);
+
+                        size = Math.Min(data.Length, PageSize - (int)(va & PageMask));
+
+                        data.Slice(0, size).CopyTo(_backingMemory.GetSpan(pa, size));
+
+                        offset += size;
+                    }
+
+                    for (; offset < data.Length; offset += size)
+                    {
+                        ulong pa = GetPhysicalAddressInternal(va + (ulong)offset);
+
+                        size = Math.Min(data.Length - offset, PageSize);
+
+                        data.Slice(offset, size).CopyTo(_backingMemory.GetSpan(pa, size));
+                    }
+                }
             }
             catch (InvalidMemoryRegionException)
             {
@@ -309,39 +297,66 @@ namespace Ryujinx.Cpu
         /// <inheritdoc/>
         public ReadOnlySpan<byte> GetSpan(ulong va, int size, bool tracked = false)
         {
+            if (size == 0)
+            {
+                return ReadOnlySpan<byte>.Empty;
+            }
+
             if (tracked)
             {
-                SignalMemoryTracking(va, (ulong)size, write: false);
+                SignalMemoryTracking(va, (ulong)size, false);
+            }
+
+            if (IsContiguousAndMapped(va, size))
+            {
+                return _backingMemory.GetSpan(GetPhysicalAddressInternal(va), size);
             }
             else
             {
-                AssertMapped(va, (ulong)size);
-            }
+                Span<byte> data = new byte[size];
 
-            return _addressSpaceMirror.GetSpan(va, size);
+                ReadImpl(va, data);
+
+                return data;
+            }
         }
 
         /// <inheritdoc/>
         public WritableRegion GetWritableRegion(ulong va, int size, bool tracked = false)
         {
+            if (size == 0)
+            {
+                return new WritableRegion(null, va, Memory<byte>.Empty);
+            }
+
             if (tracked)
             {
                 SignalMemoryTracking(va, (ulong)size, true);
             }
+
+            if (IsContiguousAndMapped(va, size))
+            {
+                return new WritableRegion(null, va, _backingMemory.GetMemory(GetPhysicalAddressInternal(va), size));
+            }
             else
             {
-                AssertMapped(va, (ulong)size);
-            }
+                Memory<byte> memory = new byte[size];
 
-            return _addressSpaceMirror.GetWritableRegion(va, size);
+                ReadImpl(va, memory.Span);
+
+                return new WritableRegion(this, va, memory);
+            }
         }
 
         /// <inheritdoc/>
         public ref T GetRef<T>(ulong va) where T : unmanaged
         {
-            SignalMemoryTracking(va, (ulong)Unsafe.SizeOf<T>(), true);
+            if (!IsContiguous(va, Unsafe.SizeOf<T>()))
+            {
+                ThrowMemoryNotContiguous();
+            }
 
-            return ref _addressSpaceMirror.GetRef<T>(va);
+            return ref _backingMemory.GetRef<T>(GetPhysicalAddressInternal(va));
         }
 
         /// <inheritdoc/>
@@ -425,14 +440,57 @@ namespace Ryujinx.Cpu
             return true;
         }
 
+        private static void ThrowMemoryNotContiguous() => throw new MemoryNotContiguousException();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsContiguousAndMapped(ulong va, int size) => IsContiguous(va, size) && IsMapped(va);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsContiguous(ulong va, int size)
+        {
+            if (!ValidateAddress(va) || !ValidateAddressAndSize(va, (ulong)size))
+            {
+                return false;
+            }
+
+            int pages = GetPagesCount(va, (uint)size, out va);
+
+            for (int page = 0; page < pages - 1; page++)
+            {
+                if (!ValidateAddress(va + PageSize))
+                {
+                    return false;
+                }
+
+                if (GetPhysicalAddressInternal(va) + PageSize != GetPhysicalAddressInternal(va + PageSize))
+                {
+                    return false;
+                }
+
+                va += PageSize;
+            }
+
+            return true;
+        }
+
         /// <inheritdoc/>
         public IEnumerable<MemoryRange> GetPhysicalRegions(ulong va, ulong size)
         {
+            if (size == 0)
+            {
+                return Enumerable.Empty<MemoryRange>();
+            }
+
+            if (!ValidateAddress(va) || !ValidateAddressAndSize(va, size))
+            {
+                return null;
+            }
+
             int pages = GetPagesCount(va, (uint)size, out va);
 
             var regions = new List<MemoryRange>();
 
-            ulong regionStart = GetPhysicalAddressChecked(va);
+            ulong regionStart = GetPhysicalAddressInternal(va);
             ulong regionSize = PageSize;
 
             for (int page = 0; page < pages - 1; page++)
@@ -442,9 +500,9 @@ namespace Ryujinx.Cpu
                     return null;
                 }
 
-                ulong newPa = GetPhysicalAddressChecked(va + PageSize);
+                ulong newPa = GetPhysicalAddressInternal(va + PageSize);
 
-                if (GetPhysicalAddressChecked(va) + PageSize != newPa)
+                if (GetPhysicalAddressInternal(va) + PageSize != newPa)
                 {
                     regions.Add(new MemoryRange(regionStart, regionSize));
                     regionStart = newPa;
@@ -460,19 +518,46 @@ namespace Ryujinx.Cpu
             return regions;
         }
 
-        private ulong GetPhysicalAddressChecked(ulong va)
+        private void ReadImpl(ulong va, Span<byte> data)
         {
-            if (!IsMapped(va))
+            if (data.Length == 0)
             {
-                ThrowInvalidMemoryRegionException($"Not mapped: va=0x{va:X16}");
+                return;
             }
 
-            return GetPhysicalAddressInternal(va);
-        }
+            try
+            {
+                AssertValidAddressAndSize(va, (ulong)data.Length);
 
-        private ulong GetPhysicalAddressInternal(ulong va)
-        {
-            return _pageTable.Read(va) + (va & PageMask);
+                int offset = 0, size;
+
+                if ((va & PageMask) != 0)
+                {
+                    ulong pa = GetPhysicalAddressInternal(va);
+
+                    size = Math.Min(data.Length, PageSize - (int)(va & PageMask));
+
+                    _backingMemory.GetSpan(pa, size).CopyTo(data.Slice(0, size));
+
+                    offset += size;
+                }
+
+                for (; offset < data.Length; offset += size)
+                {
+                    ulong pa = GetPhysicalAddressInternal(va + (ulong)offset);
+
+                    size = Math.Min(data.Length - offset, PageSize);
+
+                    _backingMemory.GetSpan(pa, size).CopyTo(data.Slice(offset, size));
+                }
+            }
+            catch (InvalidMemoryRegionException)
+            {
+                if (_invalidAccessHandler == null || !_invalidAccessHandler(va))
+                {
+                    throw;
+                }
+            }
         }
 
         /// <inheritdoc/>
@@ -764,13 +849,17 @@ namespace Ryujinx.Cpu
             }
         }
 
+        private ulong GetPhysicalAddressInternal(ulong va)
+        {
+            return _pageTable.Read(va) + (va & PageMask);
+        }
+
         /// <summary>
         /// Disposes of resources used by the memory manager.
         /// </summary>
         protected override void Destroy()
         {
             _addressSpace.Dispose();
-            _addressSpaceMirror.Dispose();
             _memoryEh.Dispose();
         }
 

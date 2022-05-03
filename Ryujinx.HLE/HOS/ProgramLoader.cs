@@ -20,13 +20,11 @@ namespace Ryujinx.HLE.HOS
     {
         public string Name;
         public ulong ProgramId;
-        public bool AllowCodeMemoryForJit;
 
-        public ProgramInfo(in Npdm npdm, bool allowCodeMemoryForJit)
+        public ProgramInfo(in Npdm npdm)
         {
             Name = StringUtils.Utf8ZToString(npdm.Meta.Value.ProgramName);
             ProgramId = npdm.Aci.Value.ProgramId.Value;
-            AllowCodeMemoryForJit = allowCodeMemoryForJit;
         }
     }
 
@@ -143,13 +141,7 @@ namespace Ryujinx.HLE.HOS
             return true;
         }
 
-        public static bool LoadNsos(
-            KernelContext context,
-            out ProcessTamperInfo tamperInfo,
-            MetaLoader metaData,
-            ProgramInfo programInfo,
-            byte[] arguments = null,
-            params IExecutable[] executables)
+        public static bool LoadNsos(KernelContext context, out ProcessTamperInfo tamperInfo, MetaLoader metaData, ProgramInfo programInfo, byte[] arguments = null, params IExecutable[] executables)
         {
             LibHac.Result rc = metaData.GetNpdm(out var npdm);
 
@@ -251,7 +243,7 @@ namespace Ryujinx.HLE.HOS
                 return false;
             }
 
-            KProcess process = new KProcess(context, programInfo.AllowCodeMemoryForJit);
+            KProcess process = new KProcess(context);
 
             MemoryRegion memoryRegion = (MemoryRegion)((npdm.Acid.Value.Flags >> 2) & 0xf);
 

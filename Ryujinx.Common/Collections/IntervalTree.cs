@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Ryujinx.Common.Collections
@@ -210,7 +212,7 @@ namespace Ryujinx.Common.Collections
         /// <param name="overlaps">Overlaps array to place results in</param>
         /// <param name="overlapCount">Overlaps count to update</param>
         private void GetValues(IntervalTreeNode<K, V> node, K start, K end, ref V[] overlaps, ref int overlapCount)
-        {
+        {   
             if (node == null || start.CompareTo(node.Max) >= 0)
             {
                 return;
@@ -622,7 +624,7 @@ namespace Ryujinx.Common.Collections
                 node.Right = LeftOf(right);
                 if (node.Right != null)
                 {
-                    node.Right.Parent = node;
+                    node.Right.Parent = node; 
                 }
                 IntervalTreeNode<K, V> nodeParent = ParentOf(node);
                 right.Parent = nodeParent;
@@ -636,7 +638,7 @@ namespace Ryujinx.Common.Collections
                 }
                 else
                 {
-                    nodeParent.Right = right;
+                    nodeParent.Right = right; 
                 }
                 right.Left = node;
                 node.Parent = right;
@@ -777,37 +779,37 @@ namespace Ryujinx.Common.Collections
     /// </summary>
     /// <typeparam name="K">Key type of the node</typeparam>
     /// <typeparam name="V">Value type of the node</typeparam>
-    class IntervalTreeNode<K, V>
+    internal class IntervalTreeNode<K, V>
     {
-        public bool Color = true;
-        public IntervalTreeNode<K, V> Left = null;
-        public IntervalTreeNode<K, V> Right = null;
-        public IntervalTreeNode<K, V> Parent = null;
+        internal bool Color = true;
+        internal IntervalTreeNode<K, V> Left = null;
+        internal IntervalTreeNode<K, V> Right = null;
+        internal IntervalTreeNode<K, V> Parent = null;
 
         /// <summary>
         /// The start of the range.
         /// </summary>
-        public K Start;
+        internal K Start;
 
         /// <summary>
         /// The end of the range - maximum of all in the Values list.
         /// </summary>
-        public K End;
+        internal K End;
 
         /// <summary>
         /// The maximum end value of this node and all its children.
         /// </summary>
-        public K Max;
+        internal K Max;
 
-        public List<RangeNode<K, V>> Values;
+        internal List<RangeNode<K, V>> Values;
 
         public IntervalTreeNode(K start, K end, V value, IntervalTreeNode<K, V> parent)
         {
-            Start = start;
-            End = end;
-            Max = end;
-            Values = new List<RangeNode<K, V>> { new RangeNode<K, V>(start, end, value) };
-            Parent = parent;
+            this.Start = start;
+            this.End = end;
+            this.Max = end;
+            this.Values = new List<RangeNode<K, V>> { new RangeNode<K, V>(start, end, value) };
+            this.Parent = parent;
         }
     }
 }

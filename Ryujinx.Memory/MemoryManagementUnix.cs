@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Text;
 
 using static Ryujinx.Memory.MemoryManagerUnixHelper;
 
@@ -11,6 +12,15 @@ namespace Ryujinx.Memory
     [SupportedOSPlatform("macos")]
     static class MemoryManagementUnix
     {
+        private struct UnixSharedMemory
+        {
+            public IntPtr Pointer;
+            public ulong Size;
+            public IntPtr SourcePointer;
+        }
+
+        private static readonly List<UnixSharedMemory> _sharedMemory = new List<UnixSharedMemory>();
+        private static readonly ConcurrentDictionary<IntPtr, ulong> _sharedMemorySource = new ConcurrentDictionary<IntPtr, ulong>();
         private static readonly ConcurrentDictionary<IntPtr, ulong> _allocations = new ConcurrentDictionary<IntPtr, ulong>();
 
         public static IntPtr Allocate(ulong size)
@@ -59,15 +69,40 @@ namespace Ryujinx.Memory
 
         public static bool Commit(IntPtr address, ulong size)
         {
-            return mprotect(address, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE) == 0;
+            bool success = mprotect(address, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE) == 0;
+
+            if (success)
+            {
+                foreach (var shared in _sharedMemory)
+                {
+                    if ((ulong)address + size > (ulong)shared.SourcePointer && (ulong)address < (ulong)shared.SourcePointer + shared.Size)
+                    {
+                        ulong sharedAddress = ((ulong)address - (ulong)shared.SourcePointer) + (ulong)shared.Pointer;
+
+                        if (mprotect((IntPtr)sharedAddress, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE) != 0)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return success;
         }
 
         public static bool Decommit(IntPtr address, ulong size)
         {
+            bool isShared;
+
+            lock (_sharedMemory)
+            {
+                isShared = _sharedMemory.Exists(x => (ulong)address >= (ulong)x.Pointer && (ulong)address + size <= (ulong)x.Pointer + x.Size);
+            }
+
             // Must be writable for madvise to work properly.
             mprotect(address, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE);
 
-            madvise(address, size, MADV_REMOVE);
+            madvise(address, size, isShared ? MADV_REMOVE : MADV_DONTNEED);
 
             return mprotect(address, size, MmapProts.PROT_NONE) == 0;
         }
@@ -106,78 +141,139 @@ namespace Ryujinx.Memory
             return munmap(address, size) == 0;
         }
 
-        public unsafe static IntPtr CreateSharedMemory(ulong size, bool reserve)
+        public static IntPtr Remap(IntPtr target, IntPtr source, ulong size)
         {
-            int fd;
+            int flags = 1;
 
-            if (OperatingSystem.IsMacOS())
+            if (target != IntPtr.Zero)
             {
-                byte[] memName = Encoding.ASCII.GetBytes("Ryujinx-XXXXXX");
-
-                fixed (byte* pMemName = memName)
-                {
-                    fd = shm_open((IntPtr)pMemName, 0x2 | 0x200 | 0x800 | 0x400, 384); // O_RDWR | O_CREAT | O_EXCL | O_TRUNC, 0600
-                    if (fd == -1)
-                    {
-                        throw new OutOfMemoryException();
-                    }
-
-                    if (shm_unlink((IntPtr)pMemName) != 0)
-                    {
-                        throw new OutOfMemoryException();
-                    }
-                }
-            }
-            else
-            {
-                byte[] fileName = Encoding.ASCII.GetBytes("/dev/shm/Ryujinx-XXXXXX");
-
-                fixed (byte* pFileName = fileName)
-                {
-                    fd = mkstemp((IntPtr)pFileName);
-                    if (fd == -1)
-                    {
-                        throw new OutOfMemoryException();
-                    }
-
-                    if (unlink((IntPtr)pFileName) != 0)
-                    {
-                        throw new OutOfMemoryException();
-                    }
-                }
+                flags |= 2;
             }
 
-            if (ftruncate(fd, (IntPtr)size) != 0)
+            IntPtr result = mremap(source, 0, size, flags, target);
+
+            if (result == IntPtr.Zero)
+            {
+                throw new InvalidOperationException();
+            }
+
+            return result;
+        }
+
+        public static IntPtr CreateSharedMemory(ulong size, bool reserve)
+        {
+            IntPtr result = AllocateInternal(
+                size,
+                reserve ? MmapProts.PROT_NONE : MmapProts.PROT_READ | MmapProts.PROT_WRITE,
+                true);
+
+            if (result == IntPtr.Zero)
             {
                 throw new OutOfMemoryException();
             }
 
-            return (IntPtr)fd;
+            _sharedMemorySource[result] = (ulong)size;
+
+            return result;
         }
 
         public static void DestroySharedMemory(IntPtr handle)
         {
-            close((int)handle);
+            lock (_sharedMemory)
+            {
+                foreach (var memory in _sharedMemory)
+                {
+                    if (memory.SourcePointer == handle)
+                    {
+                        throw new InvalidOperationException("Shared memory cannot be destroyed unless fully unmapped.");
+                    }
+                }
+            }
+
+            _sharedMemorySource.Remove(handle, out ulong _);
         }
 
-        public static IntPtr MapSharedMemory(IntPtr handle, ulong size)
+        public static IntPtr MapSharedMemory(IntPtr handle)
         {
-            return mmap(IntPtr.Zero, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE, MmapFlags.MAP_SHARED, (int)handle, 0);
+            // Try find the handle for this shared memory. If it is mapped, then we want to map
+            // it a second time in another location.
+            // If it is not mapped, then its handle is the mapping.
+
+            ulong size = _sharedMemorySource[handle];
+
+            if (size == 0)
+            {
+                throw new InvalidOperationException("Shared memory cannot be mapped after its source is unmapped.");
+            }
+
+            lock (_sharedMemory)
+            {
+                foreach (var memory in _sharedMemory)
+                {
+                    if (memory.Pointer == handle)
+                    {
+                        IntPtr result = AllocateInternal(
+                            memory.Size,
+                            MmapProts.PROT_NONE
+                            );
+
+                        if (result == IntPtr.Zero)
+                        {
+                            throw new OutOfMemoryException();
+                        }
+
+                        Remap(result, handle, memory.Size);
+
+                        _sharedMemory.Add(new UnixSharedMemory
+                        {
+                            Pointer = result,
+                            Size = memory.Size,
+
+                            SourcePointer = handle
+                        });
+
+                        return result;
+                    }
+                }
+
+                _sharedMemory.Add(new UnixSharedMemory
+                {
+                    Pointer = handle,
+                    Size = size,
+
+                    SourcePointer = handle
+                });
+            }
+
+            return handle;
         }
 
-        public static void UnmapSharedMemory(IntPtr address, ulong size)
+        public static void UnmapSharedMemory(IntPtr address)
         {
-            munmap(address, size);
-        }
+            lock (_sharedMemory)
+            {
+                int removed = _sharedMemory.RemoveAll(memory =>
+                {
+                    if (memory.Pointer == address)
+                    {
+                        if (memory.Pointer == memory.SourcePointer)
+                        {
+                            // After removing the original mapping, it cannot be mapped again.
+                            _sharedMemorySource[memory.SourcePointer] = 0;
+                        }
 
-        public static void MapView(IntPtr sharedMemory, ulong srcOffset, IntPtr location, ulong size)
-        {
-            mmap(location, size, MmapProts.PROT_READ | MmapProts.PROT_WRITE, MmapFlags.MAP_FIXED | MmapFlags.MAP_SHARED, (int)sharedMemory, (long)srcOffset);
-        }
+                        Free(address);
+                        return true;
+                    }
 
-        public static void UnmapView(IntPtr location, ulong size)
-        {
-            mmap(location, size, MmapProts.PROT_NONE, MmapFlags.MAP_FIXED, -1, 0);
+                    return false;
+                });
+
+                if (removed == 0)
+                {
+                    throw new InvalidOperationException("Shared memory mapping could not be found.");
+                }
+            }
         }
     }
 }

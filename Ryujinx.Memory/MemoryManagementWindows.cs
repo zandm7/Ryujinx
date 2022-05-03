@@ -1,5 +1,6 @@
 ﻿using Ryujinx.Memory.WindowsShared;
 using System;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace Ryujinx.Memory
@@ -9,7 +10,76 @@ namespace Ryujinx.Memory
     {
         private const int PageSize = 0x1000;
 
-        private static readonly PlaceholderManager _placeholders = new PlaceholderManager();
+        private static readonly IntPtr InvalidHandleValue = new IntPtr(-1);
+        private static readonly IntPtr CurrentProcessHandle = new IntPtr(-1);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr VirtualAlloc(
+            IntPtr lpAddress,
+            IntPtr dwSize,
+            AllocationType flAllocationType,
+            MemoryProtection flProtect);
+
+        [DllImport("KernelBase.dll", SetLastError = true)]
+        private static extern IntPtr VirtualAlloc2(
+            IntPtr process,
+            IntPtr lpAddress,
+            IntPtr dwSize,
+            AllocationType flAllocationType,
+            MemoryProtection flProtect,
+            IntPtr extendedParameters,
+            ulong parameterCount);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool VirtualProtect(
+            IntPtr lpAddress,
+            IntPtr dwSize,
+            MemoryProtection flNewProtect,
+            out MemoryProtection lpflOldProtect);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool VirtualFree(IntPtr lpAddress, IntPtr dwSize, AllocationType dwFreeType);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr CreateFileMapping(
+            IntPtr hFile,
+            IntPtr lpFileMappingAttributes,
+            FileMapProtection flProtect,
+            uint dwMaximumSizeHigh,
+            uint dwMaximumSizeLow,
+            [MarshalAs(UnmanagedType.LPWStr)] string lpName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr MapViewOfFile(
+            IntPtr hFileMappingObject,
+            uint dwDesiredAccess,
+            uint dwFileOffsetHigh,
+            uint dwFileOffsetLow,
+            IntPtr dwNumberOfBytesToMap);
+
+        [DllImport("KernelBase.dll", SetLastError = true)]
+        private static extern IntPtr MapViewOfFile3(
+            IntPtr hFileMappingObject,
+            IntPtr process,
+            IntPtr baseAddress,
+            ulong offset,
+            IntPtr dwNumberOfBytesToMap,
+            ulong allocationType,
+            MemoryProtection dwDesiredAccess,
+            IntPtr extendedParameters,
+            ulong parameterCount);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
+
+        [DllImport("KernelBase.dll", SetLastError = true)]
+        private static extern bool UnmapViewOfFile2(IntPtr process, IntPtr lpBaseAddress, ulong unmapFlags);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetLastError();
 
         public static IntPtr Allocate(IntPtr size)
         {
@@ -20,9 +90,7 @@ namespace Ryujinx.Memory
         {
             if (viewCompatible)
             {
-                IntPtr baseAddress = AllocateInternal2(size, AllocationType.Reserve | AllocationType.ReservePlaceholder);
-                _placeholders.ReserveRange((ulong)baseAddress, (ulong)size);
-                return baseAddress;
+                return AllocateInternal2(size, AllocationType.Reserve | AllocationType.ReservePlaceholder);
             }
 
             return AllocateInternal(size, AllocationType.Reserve);
@@ -30,7 +98,7 @@ namespace Ryujinx.Memory
 
         private static IntPtr AllocateInternal(IntPtr size, AllocationType flags = 0)
         {
-            IntPtr ptr = WindowsApi.VirtualAlloc(IntPtr.Zero, size, flags, MemoryProtection.ReadWrite);
+            IntPtr ptr = VirtualAlloc(IntPtr.Zero, size, flags, MemoryProtection.ReadWrite);
 
             if (ptr == IntPtr.Zero)
             {
@@ -42,7 +110,7 @@ namespace Ryujinx.Memory
 
         private static IntPtr AllocateInternal2(IntPtr size, AllocationType flags = 0)
         {
-            IntPtr ptr = WindowsApi.VirtualAlloc2(WindowsApi.CurrentProcessHandle, IntPtr.Zero, size, flags, MemoryProtection.NoAccess, IntPtr.Zero, 0);
+            IntPtr ptr = VirtualAlloc2(CurrentProcessHandle, IntPtr.Zero, size, flags, MemoryProtection.NoAccess, IntPtr.Zero, 0);
 
             if (ptr == IntPtr.Zero)
             {
@@ -54,32 +122,25 @@ namespace Ryujinx.Memory
 
         public static bool Commit(IntPtr location, IntPtr size)
         {
-            return WindowsApi.VirtualAlloc(location, size, AllocationType.Commit, MemoryProtection.ReadWrite) != IntPtr.Zero;
+            return VirtualAlloc(location, size, AllocationType.Commit, MemoryProtection.ReadWrite) != IntPtr.Zero;
         }
 
         public static bool Decommit(IntPtr location, IntPtr size)
         {
-            return WindowsApi.VirtualFree(location, size, AllocationType.Decommit);
+            return VirtualFree(location, size, AllocationType.Decommit);
         }
 
         public static void MapView(IntPtr sharedMemory, ulong srcOffset, IntPtr location, IntPtr size)
         {
-            _placeholders.MapView(sharedMemory, srcOffset, location, size);
-        }
-
-        public static void MapView4KB(IntPtr sharedMemory, ulong srcOffset, IntPtr location, IntPtr size)
-        {
-            ulong uaddress = (ulong)location;
-            ulong usize = (ulong)size;
-            IntPtr endLocation = (IntPtr)(uaddress + usize);
+            IntPtr endLocation = (nint)location + (nint)size;
 
             while (location != endLocation)
             {
-                WindowsApi.VirtualFree(location, (IntPtr)PageSize, AllocationType.Release | AllocationType.PreservePlaceholder);
+                VirtualFree(location, (IntPtr)PageSize, AllocationType.Release | AllocationType.PreservePlaceholder);
 
-                var ptr = WindowsApi.MapViewOfFile3(
+                var ptr = MapViewOfFile3(
                     sharedMemory,
-                    WindowsApi.CurrentProcessHandle,
+                    CurrentProcessHandle,
                     location,
                     srcOffset,
                     (IntPtr)PageSize,
@@ -90,7 +151,7 @@ namespace Ryujinx.Memory
 
                 if (ptr == IntPtr.Zero)
                 {
-                    throw new WindowsApiException("MapViewOfFile3");
+                    throw new Exception($"MapViewOfFile3 failed with error code 0x{GetLastError():X}.");
                 }
 
                 location += PageSize;
@@ -98,23 +159,16 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static void UnmapView(IntPtr sharedMemory, IntPtr location, IntPtr size)
+        public static void UnmapView(IntPtr location, IntPtr size)
         {
-            _placeholders.UnmapView(sharedMemory, location, size);
-        }
-
-        public static void UnmapView4KB(IntPtr location, IntPtr size)
-        {
-            ulong uaddress = (ulong)location;
-            ulong usize = (ulong)size;
-            IntPtr endLocation = (IntPtr)(uaddress + usize);
+            IntPtr endLocation = (nint)location + (int)size;
 
             while (location != endLocation)
             {
-                bool result = WindowsApi.UnmapViewOfFile2(WindowsApi.CurrentProcessHandle, location, 2);
+                bool result = UnmapViewOfFile2(CurrentProcessHandle, location, 2);
                 if (!result)
                 {
-                    throw new WindowsApiException("UnmapViewOfFile2");
+                    throw new Exception($"UnmapViewOfFile2 failed with error code 0x{GetLastError():X}.");
                 }
 
                 location += PageSize;
@@ -125,43 +179,52 @@ namespace Ryujinx.Memory
         {
             if (forView)
             {
-                return _placeholders.ReprotectView(address, size, permission);
+                ulong uaddress = (ulong)address;
+                ulong usize = (ulong)size;
+                while (usize > 0)
+                {
+                    if (!VirtualProtect((IntPtr)uaddress, (IntPtr)PageSize, GetProtection(permission), out _))
+                    {
+                        return false;
+                    }
+
+                    uaddress += PageSize;
+                    usize -= PageSize;
+                }
+
+                return true;
             }
             else
             {
-                return WindowsApi.VirtualProtect(address, size, WindowsApi.GetProtection(permission), out _);
+                return VirtualProtect(address, size, GetProtection(permission), out _);
             }
         }
 
-        public static bool Reprotect4KB(IntPtr address, IntPtr size, MemoryPermission permission, bool forView)
+        private static MemoryProtection GetProtection(MemoryPermission permission)
         {
-            ulong uaddress = (ulong)address;
-            ulong usize = (ulong)size;
-            while (usize > 0)
+            return permission switch
             {
-                if (!WindowsApi.VirtualProtect((IntPtr)uaddress, (IntPtr)PageSize, WindowsApi.GetProtection(permission), out _))
-                {
-                    return false;
-                }
-
-                uaddress += PageSize;
-                usize -= PageSize;
-            }
-
-            return true;
+                MemoryPermission.None => MemoryProtection.NoAccess,
+                MemoryPermission.Read => MemoryProtection.ReadOnly,
+                MemoryPermission.ReadAndWrite => MemoryProtection.ReadWrite,
+                MemoryPermission.ReadAndExecute => MemoryProtection.ExecuteRead,
+                MemoryPermission.ReadWriteExecute => MemoryProtection.ExecuteReadWrite,
+                MemoryPermission.Execute => MemoryProtection.Execute,
+                _ => throw new MemoryProtectionException(permission)
+            };
         }
 
         public static bool Free(IntPtr address)
         {
-            return WindowsApi.VirtualFree(address, IntPtr.Zero, AllocationType.Release);
+            return VirtualFree(address, IntPtr.Zero, AllocationType.Release);
         }
 
         public static IntPtr CreateSharedMemory(IntPtr size, bool reserve)
         {
             var prot = reserve ? FileMapProtection.SectionReserve : FileMapProtection.SectionCommit;
 
-            IntPtr handle = WindowsApi.CreateFileMapping(
-                WindowsApi.InvalidHandleValue,
+            IntPtr handle = CreateFileMapping(
+                InvalidHandleValue,
                 IntPtr.Zero,
                 FileMapProtection.PageReadWrite | prot,
                 (uint)(size.ToInt64() >> 32),
@@ -178,7 +241,7 @@ namespace Ryujinx.Memory
 
         public static void DestroySharedMemory(IntPtr handle)
         {
-            if (!WindowsApi.CloseHandle(handle))
+            if (!CloseHandle(handle))
             {
                 throw new ArgumentException("Invalid handle.", nameof(handle));
             }
@@ -186,7 +249,7 @@ namespace Ryujinx.Memory
 
         public static IntPtr MapSharedMemory(IntPtr handle)
         {
-            IntPtr ptr = WindowsApi.MapViewOfFile(handle, 4 | 2, 0, 0, IntPtr.Zero);
+            IntPtr ptr = MapViewOfFile(handle, 4 | 2, 0, 0, IntPtr.Zero);
 
             if (ptr == IntPtr.Zero)
             {
@@ -198,15 +261,10 @@ namespace Ryujinx.Memory
 
         public static void UnmapSharedMemory(IntPtr address)
         {
-            if (!WindowsApi.UnmapViewOfFile(address))
+            if (!UnmapViewOfFile(address))
             {
                 throw new ArgumentException("Invalid address.", nameof(address));
             }
-        }
-
-        public static bool RetryFromAccessViolation()
-        {
-            return _placeholders.RetryFromAccessViolation();
         }
     }
 }

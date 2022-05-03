@@ -12,6 +12,7 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
         private readonly KPageList _pageList;
         private readonly object _lock;
         private ulong _address;
+        private bool _isInitialized;
         private bool _isOwnerMapped;
         private bool _isMapped;
 
@@ -36,6 +37,7 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
             Owner.IncrementReferenceCount();
 
             _address = address;
+            _isInitialized = true;
             _isMapped = false;
             _isOwnerMapped = false;
 

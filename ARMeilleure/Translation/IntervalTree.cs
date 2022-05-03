@@ -8,7 +8,7 @@ namespace ARMeilleure.Translation
     /// </summary>
     /// <typeparam name="K">Key</typeparam>
     /// <typeparam name="V">Value</typeparam>
-    class IntervalTree<K, V> where K : IComparable<K>
+    public class IntervalTree<K, V> where K : IComparable<K>
     {
         private const int ArrayGrowthSize = 32;
 
@@ -53,7 +53,7 @@ namespace ARMeilleure.Translation
         /// <returns>Number of intervals found</returns>
         public int Get(K start, K end, ref K[] overlaps, int overlapCount = 0)
         {
-            GetKeys(_root, start, end, ref overlaps, ref overlapCount);
+            GetValues(_root, start, end, ref overlaps, ref overlapCount);
 
             return overlapCount;
         }
@@ -180,20 +180,20 @@ namespace ARMeilleure.Translation
         }
 
         /// <summary>
-        /// Retrieve all keys that overlap the given start and end keys.
+        /// Retrieve all values that overlap the given start and end keys.
         /// </summary>
         /// <param name="start">Start of the range</param>
         /// <param name="end">End of the range</param>
         /// <param name="overlaps">Overlaps array to place results in</param>
         /// <param name="overlapCount">Overlaps count to update</param>
-        private void GetKeys(IntervalTreeNode<K, V> node, K start, K end, ref K[] overlaps, ref int overlapCount)
+        private void GetValues(IntervalTreeNode<K, V> node, K start, K end, ref K[] overlaps, ref int overlapCount)
         {
             if (node == null || start.CompareTo(node.Max) >= 0)
             {
                 return;
             }
 
-            GetKeys(node.Left, start, end, ref overlaps, ref overlapCount);
+            GetValues(node.Left, start, end, ref overlaps, ref overlapCount);
 
             bool endsOnRight = end.CompareTo(node.Start) > 0;
             if (endsOnRight)
@@ -208,7 +208,7 @@ namespace ARMeilleure.Translation
                     overlaps[overlapCount++] = node.Start;
                 }
 
-                GetKeys(node.Right, start, end, ref overlaps, ref overlapCount);
+                GetValues(node.Right, start, end, ref overlaps, ref overlapCount);
             }
         }
 
@@ -717,40 +717,40 @@ namespace ARMeilleure.Translation
     /// </summary>
     /// <typeparam name="K">Key type of the node</typeparam>
     /// <typeparam name="V">Value type of the node</typeparam>
-    class IntervalTreeNode<K, V>
+    internal class IntervalTreeNode<K, V>
     {
-        public bool Color = true;
-        public IntervalTreeNode<K, V> Left = null;
-        public IntervalTreeNode<K, V> Right = null;
-        public IntervalTreeNode<K, V> Parent = null;
+        internal bool Color = true;
+        internal IntervalTreeNode<K, V> Left = null;
+        internal IntervalTreeNode<K, V> Right = null;
+        internal IntervalTreeNode<K, V> Parent = null;
 
         /// <summary>
         /// The start of the range.
         /// </summary>
-        public K Start;
+        internal K Start;
 
         /// <summary>
         /// The end of the range.
         /// </summary>
-        public K End;
+        internal K End;
 
         /// <summary>
         /// The maximum end value of this node and all its children.
         /// </summary>
-        public K Max;
+        internal K Max;
 
         /// <summary>
         /// Value stored on this node.
         /// </summary>
-        public V Value;
+        internal V Value;
 
         public IntervalTreeNode(K start, K end, V value, IntervalTreeNode<K, V> parent)
         {
-            Start = start;
-            End = end;
-            Max = end;
-            Value = value;
-            Parent = parent;
+            this.Start = start;
+            this.End = end;
+            this.Max = end;
+            this.Value = value;
+            this.Parent = parent;
         }
     }
 }

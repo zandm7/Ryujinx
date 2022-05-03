@@ -1,6 +1,5 @@
 using Ryujinx.Audio.Backends.CompatLayer;
 using Ryujinx.Audio.Integration;
-using Ryujinx.Common.Configuration;
 using Ryujinx.Graphics.Gpu;
 using Ryujinx.HLE.FileSystem;
 using Ryujinx.HLE.HOS;
@@ -49,12 +48,8 @@ namespace Ryujinx.HLE
             FileSystem    = Configuration.VirtualFileSystem;
             UiHandler     = Configuration.HostUiHandler;
 
-            MemoryAllocationFlags memoryAllocationFlags = configuration.MemoryManagerMode == MemoryManagerMode.SoftwarePageTable
-                ? MemoryAllocationFlags.Reserve
-                : MemoryAllocationFlags.Reserve | MemoryAllocationFlags.Mirrorable;
-
             AudioDeviceDriver = new CompatLayerHardwareDeviceDriver(Configuration.AudioDeviceDriver);
-            Memory            = new MemoryBlock(Configuration.MemoryConfiguration.ToDramSize(), memoryAllocationFlags);
+            Memory            = new MemoryBlock(Configuration.MemoryConfiguration.ToDramSize(), MemoryAllocationFlags.Reserve | MemoryAllocationFlags.Mirrorable);
             Gpu               = new GpuContext(Configuration.GpuRenderer);
             System            = new Horizon(this);
             Statistics        = new PerformanceStatistics();
