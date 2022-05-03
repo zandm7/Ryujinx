@@ -76,17 +76,24 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static void MapView(IntPtr sharedMemory, ulong srcOffset, IntPtr address, ulong size)
+        public static void MapView(IntPtr sharedMemory, ulong srcOffset, IntPtr address, ulong size, bool force4KBMap)
         {
             if (OperatingSystem.IsWindows())
             {
                 IntPtr sizeNint = new IntPtr((long)size);
 
-                MemoryManagementWindows.MapView(sharedMemory, srcOffset, address, sizeNint);
+                if (force4KBMap)
+                {
+                    MemoryManagementWindows.MapView4KB(sharedMemory, srcOffset, address, sizeNint);
+                }
+                else
+                {
+                    MemoryManagementWindows.MapView(sharedMemory, srcOffset, address, sizeNint);
+                }
             }
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                MemoryManagementUnix.Remap(address, (IntPtr)((ulong)sharedMemory + srcOffset), size);
+                MemoryManagementUnix.MapView(sharedMemory, srcOffset, address, size);
             }
             else
             {
@@ -94,17 +101,24 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static void UnmapView(IntPtr address, ulong size)
+        public static void UnmapView(IntPtr sharedMemory, IntPtr address, ulong size, bool force4KBMap)
         {
             if (OperatingSystem.IsWindows())
             {
                 IntPtr sizeNint = new IntPtr((long)size);
 
-                MemoryManagementWindows.UnmapView(address, sizeNint);
+                if (force4KBMap)
+                {
+                    MemoryManagementWindows.UnmapView4KB(address, sizeNint);
+                }
+                else
+                {
+                    MemoryManagementWindows.UnmapView(sharedMemory, address, sizeNint);
+                }
             }
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                MemoryManagementUnix.Unmap(address, size);
+                MemoryManagementUnix.UnmapView(address, size);
             }
             else
             {
@@ -112,7 +126,7 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static void Reprotect(IntPtr address, ulong size, MemoryPermission permission, bool forView, bool throwOnFail)
+        public static void Reprotect(IntPtr address, ulong size, MemoryPermission permission, bool forView, bool force4KBMap, bool throwOnFail)
         {
             bool result;
 
@@ -120,7 +134,14 @@ namespace Ryujinx.Memory
             {
                 IntPtr sizeNint = new IntPtr((long)size);
 
-                result = MemoryManagementWindows.Reprotect(address, sizeNint, permission, forView);
+                if (forView && force4KBMap)
+                {
+                    result = MemoryManagementWindows.Reprotect4KB(address, sizeNint, permission, forView);
+                }
+                else
+                {
+                    result = MemoryManagementWindows.Reprotect(address, sizeNint, permission, forView);
+                }
             }
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
@@ -187,7 +208,7 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static IntPtr MapSharedMemory(IntPtr handle)
+        public static IntPtr MapSharedMemory(IntPtr handle, ulong size)
         {
             if (OperatingSystem.IsWindows())
             {
@@ -195,7 +216,7 @@ namespace Ryujinx.Memory
             }
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                return MemoryManagementUnix.MapSharedMemory(handle);
+                return MemoryManagementUnix.MapSharedMemory(handle, size);
             }
             else
             {
@@ -203,7 +224,7 @@ namespace Ryujinx.Memory
             }
         }
 
-        public static void UnmapSharedMemory(IntPtr address)
+        public static void UnmapSharedMemory(IntPtr address, ulong size)
         {
             if (OperatingSystem.IsWindows())
             {
@@ -211,19 +232,7 @@ namespace Ryujinx.Memory
             }
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                MemoryManagementUnix.UnmapSharedMemory(address);
-            }
-            else
-            {
-                throw new PlatformNotSupportedException();
-            }
-        }
-
-        public static IntPtr Remap(IntPtr target, IntPtr source, ulong size)
-        {
-            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-            {
-                return MemoryManagementUnix.Remap(target, source, size);
+                MemoryManagementUnix.UnmapSharedMemory(address, size);
             }
             else
             {
