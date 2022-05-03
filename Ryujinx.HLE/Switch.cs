@@ -49,7 +49,7 @@ namespace Ryujinx.HLE
             UiHandler     = Configuration.HostUiHandler;
 
             AudioDeviceDriver = new CompatLayerHardwareDeviceDriver(Configuration.AudioDeviceDriver);
-            Memory            = new MemoryBlock(Configuration.MemoryConfiguration.ToDramSize(), MemoryAllocationFlags.Reserve | MemoryAllocationFlags.Mirrorable);
+            Memory            = new MemoryBlock(Configuration.MemoryConfiguration.ToDramSize(), MemoryAllocationFlags.Reserve);
             Gpu               = new GpuContext(Configuration.GpuRenderer);
             System            = new Horizon(this);
             Statistics        = new PerformanceStatistics();

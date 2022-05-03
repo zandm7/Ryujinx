@@ -6,7 +6,7 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
 {
     class KSharedMemory : KAutoObject
     {
-        private readonly KPageList _pageList;
+        private readonly SharedMemoryStorage _storage;
 
         private readonly ulong _ownerPid;
 
@@ -20,7 +20,7 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
             KMemoryPermission ownerPermission,
             KMemoryPermission userPermission) : base(context)
         {
-            _pageList = storage.GetPageList();
+            _storage = storage;
             _ownerPid = ownerPid;
             _ownerPermission = ownerPermission;
             _userPermission = userPermission;
@@ -33,7 +33,10 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
             KProcess process,
             KMemoryPermission permission)
         {
-            if (_pageList.GetPagesCount() != BitUtils.DivRoundUp(size, KPageTableBase.PageSize))
+            ulong pagesCountRounded = BitUtils.DivRoundUp(size, KPageTableBase.PageSize);
+
+            var pageList = _storage.GetPageList();
+            if (pageList.GetPagesCount() != pagesCountRounded)
             {
                 return KernelResult.InvalidSize;
             }
@@ -47,17 +50,35 @@ namespace Ryujinx.HLE.HOS.Kernel.Memory
                 return KernelResult.InvalidPermission;
             }
 
-            return memoryManager.MapPages(address, _pageList, MemoryState.SharedMemory, permission);
+            KernelResult result = memoryManager.MapPages(address, pageList, MemoryState.SharedMemory, permission);
+
+            if (result == KernelResult.Success && !memoryManager.SupportsMemoryAliasing)
+            {
+                _storage.Borrow(process, address);
+            }
+
+            return result;
         }
 
-        public KernelResult UnmapFromProcess(KPageTableBase memoryManager, ulong address, ulong size, KProcess process)
+        public KernelResult UnmapFromProcess(
+            KPageTableBase memoryManager,
+            ulong address,
+            ulong size,
+            KProcess process)
         {
-            if (_pageList.GetPagesCount() != BitUtils.DivRoundUp(size, KPageTableBase.PageSize))
+            ulong pagesCountRounded = BitUtils.DivRoundUp(size, KPageTableBase.PageSize);
+
+            var pageList = _storage.GetPageList();
+            ulong pagesCount = pageList.GetPagesCount();
+
+            if (pagesCount != pagesCountRounded)
             {
                 return KernelResult.InvalidSize;
             }
 
-            return memoryManager.UnmapPages(address, _pageList, MemoryState.SharedMemory);
+            var ranges = _storage.GetRanges();
+
+            return memoryManager.UnmapPages(address, pagesCount, ranges, MemoryState.SharedMemory);
         }
     }
 }
