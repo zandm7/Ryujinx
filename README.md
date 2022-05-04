@@ -1,4 +1,11 @@
 <h1>
+  Deprecated!
+</h1>
+<p>
+  This project is now deprecated, as Skyline (and HDR) support was added to mainline Ryujinx. In addition, the mainline <a href="https://github.com/Ryujinx/Ryujinx/pull/2518">Vulkan PR build</a> is also up-to-date and supports both Skyline and HDR.
+</p>
+<strike>
+<h1>
   NotRyujinx-HDR
 </h1>
 <h3>
@@ -49,3 +56,4 @@
     (Reverted as it broke OpenGL; now available as a PR build instead) <strike>https://github.com/Ryujinx/Ryujinx/pull/2518 (Vulkan support)</strike>
   </li>
 </ul>
+</strike>
